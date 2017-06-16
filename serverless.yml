@@ -1,0 +1,102 @@
+service: reddit
+
+provider:
+    name: aws
+    runtime: nodejs4.3
+    timeout: 30
+    versionFunctions: false
+    environment: ${file(environment.js):environment}
+    iamRoleStatements:
+        - Effect: "Allow"
+          Action:
+              - dynamodb:GetItem
+              - dynamodb:PutItem
+          Resource: arn:aws:dynamodb:*:*:table/feeds-${self:provider.stage}
+        - Effect: "Allow"
+          Action:
+              - dynamodb:GetItem
+              - dynamodb:PutItem
+              - dynamodb:UpdateItem
+              - dynamodb:Scan
+          Resource: arn:aws:dynamodb:*:*:table/dota-players-${self:provider.stage}
+
+functions:
+    redditFeed:
+        environment:
+            table: feeds-${self:provider.stage}
+        handler: handler.redditFeed
+        events:
+            - schedule: rate(5 minutes)
+    dotaBlog:
+        environment:
+            table: feeds-${self:provider.stage}
+        handler: handler.dotaBlog
+        events:
+            - schedule: rate(5 minutes)
+    pokemongoUpdates:
+        environment:
+            table: feeds-${self:provider.stage}
+        handler: handler.pokemongoUpdates
+        events:
+            - schedule: rate(5 minutes)
+    twitchStreams:
+        environment:
+            table: feeds-${self:provider.stage}
+        handler: handler.twitchStreams
+        events:
+            - schedule: rate(5 minutes)
+    arkChangelog:
+        environment:
+            table: feeds-${self:provider.stage}
+        handler: handler.arkChangelog
+        events:
+            - schedule: rate(5 minutes)
+    dotaMatches:
+        environment:
+            table: dota-players-${self:provider.stage}
+        handler: handler.dotaMatches
+        events:
+            - schedule: rate(5 minutes)
+    dotaUpdates:
+        environment:
+            table: feeds-${self:provider.stage}
+        handler: handler.dotaUpdates
+        events:
+            - schedule: rate(5 minutes)
+    steamUpdates:
+        environment:
+            table: feeds-${self:provider.stage}
+        handler: handler.steamUpdates
+        events:
+            - schedule: rate(5 minutes)
+    embedTest:
+        handler: handler.embedTest
+
+resources:
+    Resources:
+        FeedsTable:
+            Type: AWS::DynamoDB::Table
+            Properties:
+                TableName: feeds-${self:provider.stage}
+                AttributeDefinitions:
+                    - AttributeName: name
+                      AttributeType: S
+                KeySchema:
+                    - AttributeName: name
+                      KeyType: HASH
+                ProvisionedThroughput:
+                    ReadCapacityUnits: 5
+                    WriteCapacityUnits: 5
+        DotaPlayersTable:
+            Type: AWS::DynamoDB::Table
+            Properties:
+                TableName: dota-players-${self:provider.stage}
+                AttributeDefinitions:
+                    - AttributeName: steamID
+                      AttributeType: S
+                KeySchema:
+                    - AttributeName: steamID
+                      KeyType: HASH
+                ProvisionedThroughput:
+                    ReadCapacityUnits: 5
+                    WriteCapacityUnits: 5

@@ -1,0 +1,17 @@
+{
+  "name": "lambda",
+  "version": "1.0.0",
+  "description": "",
+  "main": "handler.js",
+  "dependencies": {
+    "aws-sdk": "^2.9.0",
+    "cheerio": "^0.22.0",
+    "crypto": "0.0.3",
+    "mysql": "^2.13.0",
+    "request": "^2.79.0"
+  },
+  "devDependencies": {},
+  "scripts": {},
+  "author": "",
+  "license": "ISC"
+}
