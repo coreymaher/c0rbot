@@ -673,7 +673,7 @@ function sendDiscordMessage(data)
         let promise = Promise.resolve();
 
         embeds.forEach((embed) => {
-            promise = promise.then(() => { return discord.sendEmbed(embed, 'test'); });
+            promise = promise.then(() => { return discord.sendEmbed(embed); });
         });
 
         return promise;
