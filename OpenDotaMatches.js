@@ -3,14 +3,13 @@
 const AWS       = require('aws-sdk');
 const BigNumber = require('big-number');
 const Discord   = require('./Discord');
-const DotaAPI   = require('./DotaAPI');
+const OpenDotaAPI = require('./OpenDotaAPI');
 const DotaConstants = require('./DotaConstants');
 
 const environment = JSON.parse(process.env.environment);
 
 const discord   = new Discord();
 const docClient = new AWS.DynamoDB.DocumentClient();
-const dotaAPI   = new DotaAPI(environment.dota);
 
 discord.init(environment.discord);
 
@@ -39,9 +38,9 @@ function loadDBUsers(data)
 function loadRecentMatches(data)
 {
     const userPromises = data.dbUsers.map((user) => {
-        return dotaAPI.getLatestMatch(user.steamID)
-            .then((response) => {
-                const match = response.result.matches[0];
+        return OpenDotaAPI.getLatestMatch(user.steamID)
+            .then((matches) => {
+                const match = matches[0];
                 if (match.match_id != user.last_matchID) {
                     data.matches[match.match_id] = {};
                     data.users[user.steamID] = {
@@ -57,52 +56,36 @@ function loadRecentMatches(data)
     return Promise.all(userPromises).then(() => { return Promise.resolve(data); });
 }
 
-function loadUsers(data)
+function loadPlayers(data)
 {
-    const accountIDs = Object.keys(data.users).map((accountID) => { return (new BigNumber('76561197960265728')).plus(accountID).toString(); });
+    const userPromises = Object.keys(data.users).map((steamID) => {
+        return OpenDotaAPI.getPlayer(steamID)
+            .then((result) => {
+                data.users[steamID] = Object.assign(result, data.users[steamID]);
+                return Promise.resolve(data);
+            })
+        ;
+    });
 
-    if (!accountIDs) {
-        return Promise.resolve(data);
-    }
-
-    return dotaAPI.getPlayerSummaries(accountIDs)
-        .then((result) => {
-            result.response.players.forEach((player) => {
-                const accountID = (new BigNumber(player.steamid)).minus('76561197960265728').toString();
-
-                data.users[accountID] = Object.assign(player, data.users[accountID]);
-            });
-
-            return Promise.resolve(data);
-        })
-    ;
+    return Promise.all(userPromises).then(() => { return Promise.resolve(data); });
 }
 
 function loadMatches(data)
 {
     const matchDetails = Object.keys(data.matches).map((matchID) => {
-        return dotaAPI.getMatchDetails(matchID)
-            .then((response) => {
-                data.matches[matchID] = response.result;
+        return OpenDotaAPI.getMatch(matchID)
+            .then((match) => {
+                data.matches[matchID] = match;
+                match.players.forEach((player) => {
+                    if (player.account_id in data.users) {
+                        data.users[player.account_id].personaname = player.personaname;
+                    }
+                });
             })
         ;
     });
 
     return Promise.all(matchDetails).then(() => { return Promise.resolve(data); });
-}
-
-function loadMatchSkill(data)
-{
-    const matchSkill = Object.keys(data.matches).map((matchID) => {
-        const heroIDs = data.matches[matchID].players.map((player) => { return player.hero_id; });
-        return dotaAPI.getMatchSkill(matchID, heroIDs)
-            .then((skillID) => {
-                data.matches[matchID].skillID = skillID;
-            })
-        ;
-    });
-
-    return Promise.all(matchSkill).then(() => { return Promise.resolve(data); });
 }
 
 function sendDiscordMessage(data)
@@ -121,48 +104,62 @@ function sendDiscordMessage(data)
             return result;
         });
 
-        const skill = DotaConstants.skillIDs[match.skillID];
+        const skill = DotaConstants.skillIDs[match.skill];
         const lobby = DotaConstants.lobbyTypes[match.lobby_type];
         const gameMode = DotaConstants.gameModes[match.game_mode];
         const hero = DotaConstants.heroes[dotaPlayer.hero_id];
-        const heroName = hero.name;
-        const playerName = user.personaname;
         const isRadiant = (dotaPlayer.player_slot < 128);
         const team = (isRadiant) ? 'radiant' : 'dire';
         const result = (match.radiant_win == isRadiant) ? 'won' : 'lost';
-        const kills = dotaPlayer.kills;
-        const deaths = dotaPlayer.deaths;
-        const assists = dotaPlayer.assists;
-        const gpm = dotaPlayer.gold_per_min;
-        const xpm = dotaPlayer.xp_per_min;
         const heroDamage  = formatNumber(dotaPlayer.hero_damage);
         const towerDamage = formatNumber(dotaPlayer.tower_damage);
         const heroHealing = formatNumber(dotaPlayer.hero_healing);
-        const heroImage = hero.image;
+        const MMRs = match.players.map((player) => {
+            return player.solo_competitive_rank;
+        }).filter((rank) => { return rank });
+        const durationHours = Math.floor(match.duration / 3600);
+        const durationMinutes = Math.floor((match.duration % 3600) / 60);
+        const durationSeconds = Math.floor(match.duration % 60);
+        let duration = '';
+        if (durationHours > 0) {
+            duration += `${durationHours}h `;
+        }
+        duration += `${durationMinutes}m ${durationSeconds}s`;
 
-        const thumbnail_url = `http://cdn.dota2.com/apps/dota2/images/heroes/${heroImage}_full.png`;
+        const thumbnail_url = `http://cdn.dota2.com/apps/dota2/images/heroes/${hero.image}_full.png`;
 
-        let description = `${playerName} ${result} a `;
+        let description = `${user.personaname} ${result} a `;
         if (skill) {
             description += `${skill} skill `;
         }
-        description += `${lobby} ${gameMode} match as ${heroName}`;
+        description += `${lobby} ${gameMode} match as ${hero.name}`;
         const embed = {
             author: {
-                name: playerName,
-                icon_url: user.avatar,
+                name: user.personaname,
+                icon_url: user.profile.avatar,
             },
             description: description,
             fields: [
-                { name: 'k / d / a', value: `${kills} / ${deaths} / ${assists}`, inline: true },
-                { name: 'gpm / xpm', value: `${gpm} / ${xpm}`, inline: true },
+                { name: 'k / d / a', value: `${dotaPlayer.kills} / ${dotaPlayer.deaths} / ${dotaPlayer.assists}`, inline: true },
+                { name: 'gpm / xpm', value: `${dotaPlayer.gold_per_min} / ${dotaPlayer.xp_per_min}`, inline: true },
                 { name: 'hd / td / hh', value: `${heroDamage} / ${towerDamage} / ${heroHealing}`, inline: true },
-                { name: 'more', value: `[dotabuff](https://www.dotabuff.com/matches/${matchID}) | [opendota](https://opendota.com/matches/${matchID})` },
+                { name: 'duration', value: duration, inline: true },
             ],
             thumbnail: {
                 url: thumbnail_url,
             },
         };
+
+        if (MMRs.length > 1) {
+            const estimatedMMR = MMRs.reduce((total, rank) => { return total += parseInt(rank, 10); }, 0) / MMRs.length;
+            embed.fields.push({
+                name: 'mmr', value: Math.round(estimatedMMR), inline: true,
+            });
+        }
+
+        embed.fields.push({
+            name: 'more', value: `[dotabuff](https://www.dotabuff.com/matches/${matchID}) | [opendota](https://opendota.com/matches/${matchID})`,
+        });
 
         return Promise.resolve(embed);
     });
@@ -217,9 +214,8 @@ module.exports = (event, context, callback) => {
 
     loadDBUsers(sharedData)
         .then(loadRecentMatches)
-        .then(loadUsers)
+        .then(loadPlayers)
         .then(loadMatches)
-        .then(loadMatchSkill)
         .then(sendDiscordMessage)
         .then(updateDB)
         .then(() => {

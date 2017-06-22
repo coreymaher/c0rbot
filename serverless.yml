@@ -55,6 +55,10 @@ functions:
         environment:
             table: dota-players-${self:provider.stage}
         handler: handler.dotaMatches
+    openDotaMatches:
+        environment:
+            table: dota-players-${self:provider.stage}
+        handler: handler.openDotaMatches
         events:
             - schedule: rate(5 minutes)
     dotaUpdates:
