@@ -97,7 +97,7 @@ module.exports.redditFeed = (event, context, callback) => {
                                 url: 'https://b.thumbs.redditmedia.com/F82n9T2HtoYxNmxbe1CL0RKxBdeUEw-HVyd-F-Lb91o.png',
                             },
                         };
-                        const discordPromise = discord.sendEmbed(embed);
+                        const discordPromise = discord.sendEmbed(embed, 'updates');
                         const writePromise = updateFeedData(key, id);
 
                         Promise.all([ discordPromise, writePromise ]).then(() => { resolve(); });
@@ -145,7 +145,7 @@ module.exports.dotaBlog = (event, context, callback) => {
                         url: 'http://vignette3.wikia.nocookie.net/defenseoftheancients/images/6/64/Dota_2_Logo_only.png/revision/latest',
                     },
                 };
-                const discordPromise = discord.sendEmbed(embed);
+                const discordPromise = discord.sendEmbed(embed, 'updates');
                 const writePromise = updateFeedData('dota2_blog', id);
 
                 Promise.all([ discordPromise, writePromise ]).then(() => { resolve(); });
@@ -188,7 +188,7 @@ module.exports.pokemongoUpdates = (event, context, callback) => {
                         url: 'http://pokemongolive.com/img/global/pgo_logo.png',
                     },
                 };
-                const discordPromise = discord.sendEmbed(embed);
+                const discordPromise = discord.sendEmbed(embed, 'updates');
                 const writePromise = updateFeedData('pokemon-go_updates', id);
 
                 Promise.all([ discordPromise, writePromise ]).then(() => { resolve(); });
@@ -224,7 +224,7 @@ module.exports.twitchStreams = (event, context, callback) => {
                         url: response.stream.channel.logo,
                     },
                 };
-                const discordPromise = discord.sendEmbed(embed);
+                const discordPromise = discord.sendEmbed(embed, 'updates');
                 const writePromise = updateFeedData(key, response.stream._id);
 
                 return Promise.all([ discordPromise, writePromise ]);
@@ -278,7 +278,7 @@ module.exports.arkChangelog = (event, context, callback) => {
                             { name: 'Changes', value: changes },
                         ],
                     };
-                    const discordPromise = discord.sendEmbed(embed);
+                    const discordPromise = discord.sendEmbed(embed, 'updates');
                     const writePromise = updateFeedData('ark-changelog', version.version);
 
                     return Promise.all([ discordPromise, writePromise ]);
@@ -334,7 +334,7 @@ module.exports.dotaUpdates = (event, context, callback) => {
                         url: 'http://vignette3.wikia.nocookie.net/defenseoftheancients/images/6/64/Dota_2_Logo_only.png/revision/latest',
                     },
                 };
-                const discordPromise = discord.sendEmbed(embed);
+                const discordPromise = discord.sendEmbed(embed, 'updates');
                 const writePromise = updateFeedData('dota2_updates', url);
 
                 Promise.all([ discordPromise, writePromise ]).then(() => { resolve(); });
@@ -352,7 +352,14 @@ module.exports.steamUpdates = (event, context, callback) => {
         {
             url: 'http://store.steampowered.com/news/?appids=322330',
             name: "Don't Starve Together",
-            key: 'dont-starve-together_updates'
+            key: 'dont-starve-together_updates',
+            thumbnail: 'https://vignette.wikia.nocookie.net/dont-starve-game/images/9/90/Don%27t_Starve_Together_Logo.png',
+        },
+        {
+            url: 'http://store.steampowered.com/news/?appids=578080',
+            name: "PLAYERUNKNOWN'S BATTLEGROUNDS",
+            key: 'pubg_updates',
+            thumbnail: 'http://cdn.edgecast.steamstatic.com/steam/apps/578080/header.jpg',
         },
     ];
 
@@ -398,10 +405,10 @@ module.exports.steamUpdates = (event, context, callback) => {
                     description: link.text(),
                     url: link.attr('href'),
                     thumbnail: {
-                        url: 'https://pbs.twimg.com/profile_images/563804420278734848/ANO4GU4p_400x400.jpeg',
+                        url: game.thumbnail,
                     },
                 };
-                const discordPromise = discord.sendEmbed(embed);
+                const discordPromise = discord.sendEmbed(embed, 'updates');
                 const writePromise = updateFeedData(game.key, postID);
 
                 return Promise.all([ discordPromise, writePromise ]);
@@ -450,11 +457,11 @@ module.exports.dontStarveChangelog = (event, context, callback) => {
                     description: latestLink.text(),
                     url: url,
                     thumbnail: {
-                        url: 'http://vignette3.wikia.nocookie.net/defenseoftheancients/images/6/64/Dota_2_Logo_only.png/revision/latest',
+                        url: 'https://vignette.wikia.nocookie.net/dont-starve-game/images/9/90/Don%27t_Starve_Together_Logo.png',
                     },
                 };
-                const discordPromise = discord.sendEmbed(embed);
-                const writePromise = updateFeedData('dota2_updates', url);
+                const discordPromise = discord.sendEmbed(embed, 'updates');
+                const writePromise = updateFeedData('dont-starve-together_changelog', url);
 
                 Promise.all([ discordPromise, writePromise ]).then(() => { resolve(); });
             } else {
