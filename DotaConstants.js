@@ -39,6 +39,7 @@ module.exports.gameModes = {
     20: "All Random Death Match",
     21: "1v1 Solo Mid",
     22: "All Pick",
+    23: "Turbo",
 };
 
 module.exports.skillIDs = {
@@ -500,5 +501,13 @@ module.exports.heroes = {
     114: {
         name: "Monkey King",
         image: "monkey_king",
+    },
+    119: {
+        name: "Dark Willow",
+        image: "dark_willow",
+    },
+    120: {
+        name: "Pangolier",
+        image: "pangolier",
     },
 };
