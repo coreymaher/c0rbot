@@ -511,3 +511,14 @@ module.exports.heroes = {
         image: "pangolier",
     },
 };
+
+module.exports.rankTiers = {
+    0: 'Uncalibrated',
+    1: 'Herald',
+    2: 'Guardian',
+    3: 'Crusader',
+    4: 'Archon',
+    5: 'Legend',
+    6: 'Ancient',
+    7: 'Divine',
+};

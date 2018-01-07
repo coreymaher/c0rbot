@@ -5,6 +5,7 @@
   "main": "handler.js",
   "dependencies": {
     "aws-sdk": "^2.9.0",
+    "big-number": "^0.4.0",
     "cheerio": "^0.22.0",
     "crypto": "0.0.3",
     "mysql": "^2.13.0",

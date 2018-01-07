@@ -1,7 +1,6 @@
 'use strict';
 
 const AWS       = require('aws-sdk');
-const BigNumber = require('big-number');
 const Discord   = require('./Discord');
 const OpenDotaAPI = require('./OpenDotaAPI');
 const DotaConstants = require('./DotaConstants');
@@ -117,6 +116,9 @@ function sendDiscordMessage(data)
         const MMRs = match.players.map((player) => {
             return player.solo_competitive_rank;
         }).filter((rank) => { return rank });
+        const rankTiers = match.players.map((player) => {
+            return player.rank_tier;
+        }).filter((rank) => { return rank });
         const durationHours = Math.floor(match.duration / 3600);
         const durationMinutes = Math.floor((match.duration % 3600) / 60);
         const durationSeconds = Math.floor(match.duration % 60);
@@ -154,6 +156,15 @@ function sendDiscordMessage(data)
             const estimatedMMR = MMRs.reduce((total, rank) => { return total += parseInt(rank, 10); }, 0) / MMRs.length;
             embed.fields.push({
                 name: 'mmr', value: Math.round(estimatedMMR), inline: true,
+            });
+        }
+
+        if (rankTiers.length > 1) {
+            const estimatedTier = Math.round(rankTiers.reduce((total, rank) => { return total += parseInt(rank, 10); }, 0) / rankTiers.length);
+            const tier = Math.floor(estimatedTier / 10);
+            const subTier = (estimatedTier % 10);
+            embed.fields.push({
+                name: 'tier', value: `${DotaConstants.rankTiers[tier]} ${subTier}`, inline: true,
             });
         }
 
