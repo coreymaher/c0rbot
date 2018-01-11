@@ -160,7 +160,18 @@ function sendDiscordMessage(data)
         }
 
         if (rankTiers.length > 1) {
-            const estimatedTier = Math.round(rankTiers.reduce((total, rank) => { return total += parseInt(rank, 10); }, 0) / rankTiers.length);
+            const totalTierIndex = rankTiers
+                .map((rank) => {
+                    // Convert tier to discrete range
+                    return DotaConstants.rankTierValues.indexOf(rank); // Conv
+                })
+                .reduce((total, rank) => {
+                    return total += rank;
+                }, 0)
+            ;
+            const estimatedTierIndex = Math.round(totalTierIndex / rankTiers.length);
+            // Convert tier index back into tier rank value
+            const estimatedTier = DotaConstants.rankTierValues[estimatedTierIndex];
             const tier = Math.floor(estimatedTier / 10);
             const subTier = (estimatedTier % 10);
             embed.fields.push({
