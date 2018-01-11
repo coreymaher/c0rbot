@@ -355,12 +355,6 @@ module.exports.steamUpdates = (event, context, callback) => {
             key: 'dont-starve-together_updates',
             thumbnail: 'https://vignette.wikia.nocookie.net/dont-starve-game/images/9/90/Don%27t_Starve_Together_Logo.png',
         },
-        {
-            url: 'http://store.steampowered.com/news/?appids=578080',
-            name: "PLAYERUNKNOWN'S BATTLEGROUNDS",
-            key: 'pubg_updates',
-            thumbnail: 'http://cdn.edgecast.steamstatic.com/steam/apps/578080/header.jpg',
-        },
     ];
 
     const gamePromises = games.map((game) => {
