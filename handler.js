@@ -61,30 +61,29 @@ function simpleGet(url)
 }
 
 module.exports.redditFeed = (event, context, callback) => {
-    const users = [ 'SirBelvedere' ];
+    const key = 'reddit-dota-update';
+    const dbPromise = loadFeedData(key);
+    const rssPromise = simpleGet('https://www.reddit.com/r/dota2/new/.rss?sort=new');
 
-    const userPromises = users.map((user) => {
-        const key = `reddit-${user}`;
+    Promise.all([ dbPromise, rssPromise ])
+        .then((values) => {
+            const db  = values[0];
+            const rss = values[1];
 
-        const dbPromise = loadFeedData(key);
-        const rssPromise = simpleGet(`https://www.reddit.com/user/${user}/submitted/.rss`);
+            const $ = cheerio.load(rss);
 
-        return Promise.all([ dbPromise, rssPromise ])
-            .then((values) => {
-                const db  = values[0];
-                const rss = values[1];
-
-                const $ = cheerio.load(rss);
-
-                const entry = $('entry').first();
+            $('entry').each((i, el) => {
+                const entry = $(el);
                 const id = entry.find('id').text();
                 const title = entry.find('title').text();
                 const link = entry.find('link');
 
                 if (!id || !title) {
-                    console.error('cheerio parse error');
-                    console.error(rss);
-                    return resolve();
+                    return;
+                }
+
+                if (title.indexOf('Dota 2 Update') === -1) {
+                    return;
                 }
 
                 return new Promise((resolve, reject) => {
@@ -105,13 +104,11 @@ module.exports.redditFeed = (event, context, callback) => {
                         resolve();
                     }
                 });
-            })
-        ;
-    });
-
-    Promise.all(userPromises).then(() => {
-        callback(null, { message: 'Done' });
-    });
+            });
+        })
+        .then(() => {
+            callback(null, { message: 'Done' });
+        });
 };
 
 module.exports.dotaBlog = (event, context, callback) => {
