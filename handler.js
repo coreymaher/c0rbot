@@ -175,7 +175,11 @@ module.exports.pokemongoUpdates = (event, context, callback) => {
         const id = (link.length > 0) ? link.attr('href') : crypto.createHash('md5').update(title).digest('hex');
         const urlLink = (link.length > 0) ? `http://pokemongo.nianticlabs.com${link.attr('href')}` : url;
 
-        new Promise((resolve, reject) => {
+        return new Promise((resolve, reject) => {
+            if (!id || !title) {
+                return resolve();
+            }
+
             if (!('Item' in db) || db.Item.feed_data != id) {
                 const embed = {
                     title: 'There is a new Pokemon Go Update',
@@ -188,7 +192,7 @@ module.exports.pokemongoUpdates = (event, context, callback) => {
                 const discordPromise = discord.sendEmbed(embed, 'updates');
                 const writePromise = updateFeedData('pokemon-go_updates', id);
 
-                Promise.all([ discordPromise, writePromise ]).then(() => { resolve(); });
+                return Promise.all([ discordPromise, writePromise ]).then(() => { resolve(); });
             } else {
                 return resolve();
             }
