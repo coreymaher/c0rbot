@@ -119,12 +119,12 @@ module.exports.dotaBlog = (event, context, callback) => {
         const db  = values[0];
         const rss = values[1];
 
-        const $ = cheerio.load(rss);
+        const $ = cheerio.load(rss, { xmlMode: true });
 
         const item = $('item').first();
         const id = item.find('guid').text();
         const title = item.find('title').text();
-        const link = item.find('comments').text().replace('/#comments', '');
+        const link = item.find('link').text();
 
         if (!id || !title) {
             console.error('cheerio parse error');
