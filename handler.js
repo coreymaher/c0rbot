@@ -71,8 +71,13 @@ module.exports.redditFeed = (event, context, callback) => {
             const rss = values[1];
 
             const $ = cheerio.load(rss);
+            let found = false;
 
             $('entry').each((i, el) => {
+                if (found) {
+                    return;
+                }
+
                 const entry = $(el);
                 const id = entry.find('id').text();
                 const title = entry.find('title').text();
@@ -85,6 +90,7 @@ module.exports.redditFeed = (event, context, callback) => {
                 if (title.indexOf('Dota 2 Update') === -1) {
                     return;
                 }
+                found = true;
 
                 return new Promise((resolve, reject) => {
                     if (!('Item' in db) || db.Item.feed_data != id) {
