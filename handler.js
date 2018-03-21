@@ -303,6 +303,7 @@ module.exports.arkChangelog = (event, context, callback) => {
 
 module.exports.dotaMatches = require('./DotaMatches');
 module.exports.openDotaMatches = require('./OpenDotaMatches');
+module.exports.fortniteMatches = require('./FortniteMatches');
 
 module.exports.dotaUpdates = (event, context, callback) => {
     const dbPromise = loadFeedData('dota2_updates');

@@ -2,7 +2,7 @@ service: reddit
 
 provider:
     name: aws
-    runtime: nodejs4.3
+    runtime: nodejs6.10
     timeout: 30
     versionFunctions: false
     environment: ${file(environment.js):environment}
@@ -19,6 +19,13 @@ provider:
               - dynamodb:UpdateItem
               - dynamodb:Scan
           Resource: arn:aws:dynamodb:*:*:table/dota-players-${self:provider.stage}
+        - Effect: "Allow"
+          Action:
+              - dynamodb:GetItem
+              - dynamodb:PutItem
+              - dynamodb:UpdateItem
+              - dynamodb:Scan
+          Resource: arn:aws:dynamodb:*:*:table/fortnite
 
 functions:
     redditFeed:
@@ -73,6 +80,12 @@ functions:
         handler: handler.steamUpdates
         events:
             - schedule: rate(5 minutes)
+    fortniteMatches:
+        environment:
+            table: fortnite
+        handler: handler.fortniteMatches
+        events:
+            - schedule: rate(5 minutes)
     embedTest:
         handler: handler.embedTest
 
@@ -100,6 +113,19 @@ resources:
                       AttributeType: S
                 KeySchema:
                     - AttributeName: steamID
+                      KeyType: HASH
+                ProvisionedThroughput:
+                    ReadCapacityUnits: 5
+                    WriteCapacityUnits: 5
+        FortniteTable:
+            Type: AWS::DynamoDB::Table
+            Properties:
+                TableName: fortnite
+                AttributeDefinitions:
+                    - AttributeName: name
+                      AttributeType: S
+                KeySchema:
+                    - AttributeName: name
                       KeyType: HASH
                 ProvisionedThroughput:
                     ReadCapacityUnits: 5
