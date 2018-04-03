@@ -474,3 +474,56 @@ module.exports.dontStarveChangelog = (event, context, callback) => {
         callback(null, { message: 'Done' });
     });
 }
+
+module.exports.fortniteChangelog = (event, context, callback) => {
+    const dbPromise = loadFeedData('fortnite_changelog');
+    const requestPromise = simpleGet('https://www.epicgames.com/fortnite/en-US/news');
+
+    Promise.all([ dbPromise, requestPromise ]).then((values) => {
+        const db      = values[0];
+        const content = values[1];
+
+        const matches = content.match(/window.__epic_fortnite_state = (\{.*\});/);
+        const data = JSON.parse(matches[1]);
+
+        const posts = [].concat(data.BlogStore.topFeatured, data.BlogStore.blogList);
+
+        const changePost = posts.reduce((acc, post) => {
+            if (!post.category.includes('patch notes')) {
+                return acc;
+            }
+
+            post.timestamp = (new Date(post.date)).getTime();
+            if (acc) {
+                return (post.timestamp > acc.timestamp) ? post : acc;
+            }
+
+            return post;
+        }, null);
+
+        return new Promise((resolve, reject) => {
+            if (!changePost || !changePost['_id']) {
+                return resolve();
+            }
+
+            if (!('Item' in db) || db.Item.feed_data != changePost['_id']) {
+                const embed = {
+                    title: 'There is a new Fortnite Update',
+                    description: `${changePost.title} - ${changePost.short.replace(/<[^>]+>/g, '')}`,
+                    url: `https://www.epicgames.com/fortnite${changePost.url}`,
+                    thumbnail: {
+                        url: changePost.image,
+                    },
+                };
+                const discordPromise = discord.sendEmbed(embed, 'updates');
+                const writePromise = updateFeedData('fortnite_changelog', changePost['_id']);
+
+                return Promise.all([ discordPromise, writePromise ]).then(() => { resolve(); });
+            } else {
+                return resolve();
+            }
+        });
+    }).then(() => {
+        callback(null, { message: 'Done' });
+    });
+}
