@@ -26,6 +26,13 @@ provider:
               - dynamodb:UpdateItem
               - dynamodb:Scan
           Resource: arn:aws:dynamodb:*:*:table/fortnite
+        - Effect: "Allow"
+          Action:
+              - dynamodb:GetItem
+              - dynamodb:PutItem
+              - dynamodb:UpdateItem
+              - dynamodb:Scan
+          Resource: arn:aws:dynamodb:*:*:table/pubg
 
 functions:
     redditFeed:
@@ -92,6 +99,12 @@ functions:
         handler: handler.fortniteChangelog
         events:
             - schedule: rate(30 minutes)
+    pubgMatches:
+        environment:
+            table: pubg
+        handler: handler.pubgMatches
+        events:
+            - schedule: rate(5 minutes)
     embedTest:
         handler: handler.embedTest
 
@@ -132,6 +145,19 @@ resources:
                       AttributeType: S
                 KeySchema:
                     - AttributeName: name
+                      KeyType: HASH
+                ProvisionedThroughput:
+                    ReadCapacityUnits: 5
+                    WriteCapacityUnits: 5
+        PubgTable:
+            Type: AWS::DynamoDB::Table
+            Properties:
+                TableName: pubg
+                AttributeDefinitions:
+                    - AttributeName: id
+                      AttributeType: S
+                KeySchema:
+                    - AttributeName: id
                       KeyType: HASH
                 ProvisionedThroughput:
                     ReadCapacityUnits: 5
