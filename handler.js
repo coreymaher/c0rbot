@@ -503,7 +503,7 @@ module.exports.fortniteChangelog = (event, context, callback) => {
         }, null);
 
         return new Promise((resolve, reject) => {
-            if (!changePost || !changePost['_id']) {
+            if (!changePost || !changePost['_id'] || !changePost.urlPattern) {
                 return resolve();
             }
 
@@ -511,7 +511,7 @@ module.exports.fortniteChangelog = (event, context, callback) => {
                 const embed = {
                     title: 'There is a new Fortnite Update',
                     description: `${changePost.title} - ${changePost.short.replace(/<[^>]+>/g, '')}`,
-                    url: `https://www.epicgames.com/fortnite${changePost.url}`,
+                    url: `https://www.epicgames.com/fortnite${changePost.urlPattern}`,
                     thumbnail: {
                         url: changePost.image,
                     },
