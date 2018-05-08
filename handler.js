@@ -502,8 +502,10 @@ module.exports.fortniteChangelog = (event, context, callback) => {
             return post;
         }, null);
 
+        const url = ('externalLink' in changePost) ? changePost.externalLink : changePost.urlPattern;
+
         return new Promise((resolve, reject) => {
-            if (!changePost || !changePost['_id'] || !changePost.urlPattern) {
+            if (!changePost || !changePost['_id'] || !url) {
                 return resolve();
             }
 
@@ -511,7 +513,7 @@ module.exports.fortniteChangelog = (event, context, callback) => {
                 const embed = {
                     title: 'There is a new Fortnite Update',
                     description: `${changePost.title} - ${changePost.short.replace(/<[^>]+>/g, '')}`,
-                    url: `https://www.epicgames.com/fortnite${changePost.urlPattern}`,
+                    url: `https://www.epicgames.com/fortnite${url}`,
                     thumbnail: {
                         url: changePost.image,
                     },
