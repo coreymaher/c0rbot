@@ -40,6 +40,7 @@ module.exports.gameModes = {
     21: "1v1 Solo Mid",
     22: "All Pick",
     23: "Turbo",
+    23: "Mutation",
 };
 
 module.exports.skillIDs = {
