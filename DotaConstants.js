@@ -7,7 +7,7 @@ module.exports.lobbyTypes = {
     2 : "Tournament",
     3 : "Tutorial",
     //4 : "Co-Op with Bots",
-    4 : "Siltbreaker",
+    4 : "Underhollow",
     5 : "Ranked Team MM",
     6 : "Solo MM",
     7 : "Ranked",
