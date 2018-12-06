@@ -134,6 +134,12 @@ function buildEmbed(place, player, match) {
     const killsLabel = (type == 'solo') ? 'kills' : 'kills / assists / DBNOs';
     const killsValue = (type == 'solo') ? player.attributes.stats.kills : `${player.attributes.stats.kills} / ${player.attributes.stats.assists} / ${player.attributes.stats.DBNOs}`;
 
+    const map = match.attributes.mapName.replace(/_(.*)$/, '');
+    let distance = 0;
+    [ 'walkDistance', 'rideDistance', 'swimDistance' ].forEach(function(field) {
+        distance += player.attributes.stats[field];
+    });
+
     return {
         author: {
             name,
@@ -143,7 +149,8 @@ function buildEmbed(place, player, match) {
             { name: killsLabel, value: killsValue, inline: true },
             { name: 'damage', value: `${Math.round(player.attributes.stats.damageDealt)}`, inline: true },
             { name: 'time', value: `${Math.round(player.attributes.stats.timeSurvived / 60)} minutes`, inline: true },
-            { name: 'distance', value: `${Math.round(player.attributes.stats.walkDistance)} meters`, inline: true },
+            { name: 'distance', value: `${Math.round(distance)} meters`, inline: true },
+            { name: 'map', value: map, inline: true },
         ],
         thumbnail: {
             url: 'https://theme.zdassets.com/theme_assets/2042105/d3974a8e44860e0e05c0508c5a51f4be724a3439.png',

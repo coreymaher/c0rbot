@@ -103,6 +103,7 @@ functions:
         environment:
             table: pubg
         handler: handler.pubgMatches
+        timeout: 300
         events:
             - schedule: rate(5 minutes)
     embedTest:
