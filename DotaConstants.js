@@ -515,6 +515,10 @@ module.exports.heroes = {
         name: "Grimstroke",
         image: "grimstroke",
     },
+    129: {
+        name: "Mars",
+        image: "mars",
+    },
 };
 
 module.exports.rankTiers = {
