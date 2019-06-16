@@ -530,3 +530,69 @@ module.exports.fortniteChangelog = (event, context, callback) => {
         callback(null, { message: 'Done' });
     });
 }
+
+module.exports.underlordsChangelog = (event, context, callback) => {
+    const dbPromise = loadFeedData('underlords_changelog');
+    const requestPromise = simpleGet('https://underlords.com/updates');
+
+    Promise.all([ dbPromise, requestPromise ]).then((values) => {
+        const db  = values[0];
+        const content = values[1];
+
+        const $ = cheerio.load(content);
+
+        const patches = $('#Form')
+            .filter((i, e) => {
+                const el = $(e);
+                return (el.has('.PatchDate') && el.has('.PatchTitle') && el.has('.PatchNotes'));
+            }).map((i, e) => {
+                const el = $(e);
+                return {
+                    'PatchDate': el.find('.PatchDate').text().trim(),
+                    'PatchTitle': el.find('.PatchTitle').text().trim(),
+                    'PatchNotes': el.find('li').toArray().map((el) => { return $(el).text().trim(); }),
+                };
+            }).get();
+
+        const latest = (patches && patches.length > 0) ? patches[0] : null;
+        if (!latest) {
+            return Promose.resolve();
+        }
+
+        const id = `${latest.PatchDate}-${latest.PatchTitle}`;
+
+        return new Promise((resolve, reject) => {
+            if (!('Item' in db) || db.Item.feed_data != id) {
+                const updates = [...Array(Math.min(3, latest.PatchNotes.length)).keys()].map((i) => {
+                    return `+ ${latest.PatchNotes[i]}`;
+                });
+
+                const embed = {
+                    title: "There is a new Dota Underlords Update",
+                    description: latest.PatchTitle,
+                    url: 'https://underlords.com/updates',
+                    thumbnail: {
+                        url: 'https://underlords.com/public/images/teaser/logo.png',
+                    },
+                };
+
+                if (updates.length > 0) {
+                    embed.description += '\n\n' + updates.join('\n');
+                }
+
+                if (updates.length < latest.PatchNotes.length) {
+                    embed.description += '\n+ ...';
+                }
+
+                const discordPromise = discord.sendEmbed(embed, 'updates');
+                const writePromise = updateFeedData('underlords_changelog', id);
+
+                Promise.all([ discordPromise, writePromise ]).then(() => { resolve(); });
+            } else {
+                return resolve();
+            }
+        });
+    }).then(() => {
+        callback(null, { message: 'Done' });
+    });
+}

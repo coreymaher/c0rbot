@@ -106,6 +106,12 @@ functions:
         timeout: 300
         events:
             - schedule: rate(5 minutes)
+    underlordsChangelog:
+        environment:
+            table: feeds-${self:provider.stage}
+        handler: handler.underlordsChangelog
+        events:
+            - schedule: rate(30 minutes)
     embedTest:
         handler: handler.embedTest
 
