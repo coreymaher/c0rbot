@@ -8,10 +8,9 @@
     "big-number": "^0.4.0",
     "cheerio": "^0.22.0",
     "crypto": "0.0.3",
-    "mysql": "^2.13.0",
     "ordinal": "^1.0.2",
-    "protobufjs": "^6.8.0",
-    "request": "^2.79.0"
+    "protobufjs": "^6.8.6",
+    "request": "^2.88.0"
   },
   "devDependencies": {},
   "scripts": {},
