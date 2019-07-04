@@ -533,7 +533,34 @@ module.exports.fortniteChangelog = (event, context, callback) => {
 
 module.exports.underlordsChangelog = (event, context, callback) => {
     const dbPromise = loadFeedData('underlords_changelog');
-    const requestPromise = simpleGet('https://underlords.com/updates');
+    const requestPromise = simpleGet('https://underlords.com/updates?l=english');
+
+    function formatDate(str) {
+        let result = '0';
+
+        const months = {
+            'January': '1',
+            'February': '2',
+            'March': '3',
+            'April': '4',
+            'May': '5',
+            'June': '6',
+            'July': '7',
+            'August': '8',
+            'September': '9',
+            'October': '10',
+            'November': '11',
+            'December': '12',
+        };
+
+        try {
+            const [ /*ignore*/, month, day, year ] = /^(\S+) (\d+)[^,]+, (\d+)$/.exec(str);
+
+            result = `${year.padStart(4, '0')}${months[month].padStart(2, '0')}${day.padStart(2, '0')}`;
+        } catch (e) {}
+
+        return parseInt(result, 10);
+    }
 
     Promise.all([ dbPromise, requestPromise ]).then((values) => {
         const db  = values[0];
@@ -549,10 +576,13 @@ module.exports.underlordsChangelog = (event, context, callback) => {
                 const el = $(e);
                 return {
                     'PatchDate': el.find('.PatchDate').text().trim(),
+                    'PatchDateCmp': formatDate(el.find('.PatchDate').text().trim()),
                     'PatchTitle': el.find('.PatchTitle').text().trim(),
                     'PatchNotes': el.find('li').toArray().map((el) => { return $(el).text().trim(); }),
                 };
-            }).get();
+            }).get().sort((a, b) => {
+                return b.PatchDateCmp - a.PatchDateCmp;
+            });
 
         const latest = (patches && patches.length > 0) ? patches[0] : null;
         if (!latest) {
