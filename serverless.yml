@@ -72,6 +72,7 @@ functions:
     openDotaMatches:
         environment:
             table: dota-players-${self:provider.stage}
+            eventName: "Mo’rokai"
         handler: handler.openDotaMatches
         events:
             - schedule: rate(10 minutes)

@@ -87,6 +87,16 @@ function loadMatches(data)
     return Promise.all(matchDetails).then(() => { return Promise.resolve(data); });
 }
 
+function getGameMode(modeID) {
+    let result = DotaConstants.gameModes[modeID];
+
+    if (modeID === 19 && 'eventName' in process.env) {
+        result = process.env.eventName;
+    }
+
+    return result;
+}
+
 function sendDiscordMessage(data)
 {
     const userPromises = Object.keys(data.users).map((userID) => {
@@ -105,7 +115,7 @@ function sendDiscordMessage(data)
 
         const skill = DotaConstants.skillIDs[match.skill];
         const lobby = DotaConstants.lobbyTypes[match.lobby_type];
-        const gameMode = DotaConstants.gameModes[match.game_mode];
+        const gameMode = getGameMode(match.game_mode);
         const hero = DotaConstants.heroes[dotaPlayer.hero_id];
         const isRadiant = (dotaPlayer.player_slot < 128);
         const team = (isRadiant) ? 'radiant' : 'dire';
@@ -134,7 +144,10 @@ function sendDiscordMessage(data)
         if (skill) {
             description += `${skill} skill `;
         }
-        description += `${lobby} ${gameMode} match as ${hero.name}`;
+        if (lobby) {
+            description += `${lobby} `;
+        }
+        description += `${gameMode} match as ${hero.name}`;
         const embed = {
             author: {
                 name: user.personaname,
