@@ -52,19 +52,25 @@ functions:
             table: feeds-${self:provider.stage}
         handler: handler.pokemongoUpdates
         events:
-            - schedule: rate(30 minutes)
+            - schedule:
+                rate: rate(30 minutes)
+                enabled: false
     twitchStreams:
         environment:
             table: feeds-${self:provider.stage}
         handler: handler.twitchStreams
         events:
-            - schedule: rate(5 minutes)
+            - schedule:
+                rate: rate(5 minutes)
+                enabled: false
     arkChangelog:
         environment:
             table: feeds-${self:provider.stage}
         handler: handler.arkChangelog
         events:
-            - schedule: rate(30 minutes)
+            - schedule:
+                rate: rate(30 minutes)
+                enabled: false
     dotaMatches:
         environment:
             table: dota-players-${self:provider.stage}
@@ -93,7 +99,9 @@ functions:
             table: fortnite
         handler: handler.fortniteMatches
         events:
-            - schedule: rate(5 minutes)
+            - schedule:
+                rate: rate(15 minutes)
+                enabled: false
     fortniteChangelog:
         environment:
             table: feeds-${self:provider.stage}
