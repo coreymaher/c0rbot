@@ -515,6 +515,14 @@ module.exports.heroes = {
         name: "Grimstroke",
         image: "grimstroke",
     },
+    126: {
+        name: "Void Spirit",
+        image: "void_spirit",
+    },
+    128: {
+        name: "Snapfire",
+        image: "snapfire",
+    },
     129: {
         name: "Mars",
         image: "mars",
