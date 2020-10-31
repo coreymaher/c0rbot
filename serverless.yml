@@ -33,6 +33,13 @@ provider:
               - dynamodb:UpdateItem
               - dynamodb:Scan
           Resource: arn:aws:dynamodb:*:*:table/pubg
+        - Effect: "Allow"
+          Action:
+              - dynamodb:GetItem
+              - dynamodb:PutItem
+              - dynamodb:UpdateItem
+              - dynamodb:Scan
+          Resource: arn:aws:dynamodb:*:*:table/config
 
 functions:
     redditFeed:
@@ -78,7 +85,6 @@ functions:
     openDotaMatches:
         environment:
             table: dota-players-${self:provider.stage}
-            eventName: "Mo’rokai"
         handler: handler.openDotaMatches
         events:
             - schedule: rate(10 minutes)
@@ -175,6 +181,23 @@ resources:
                 KeySchema:
                     - AttributeName: id
                       KeyType: HASH
+                ProvisionedThroughput:
+                    ReadCapacityUnits: 5
+                    WriteCapacityUnits: 5
+        ConfigTable:
+            Type: AWS::DynamoDB::Table
+            Properties:
+                TableName: config
+                AttributeDefinitions:
+                    - AttributeName: Key
+                      AttributeType: S
+                    - AttributeName: ConfigScope
+                      AttributeType: S
+                KeySchema:
+                    - AttributeName: Key
+                      KeyType: HASH
+                    - AttributeName: ConfigScope
+                      KeyType: RANGE
                 ProvisionedThroughput:
                     ReadCapacityUnits: 5
                     WriteCapacityUnits: 5

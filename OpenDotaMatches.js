@@ -34,6 +34,29 @@ function loadDBUsers(data)
     });
 }
 
+function loadConfig(data) {
+    const scanParams = {
+        TableName: 'config',
+        FilterExpression: 'ConfigScope = :s',
+        ExpressionAttributeValues: {
+            ":s": "OpenDotaMatches",
+        }
+    };
+
+    return new Promise((resolve, reject) => {
+        docClient.scan(scanParams, (err, result) => {
+            if (err) { console.error('DynamoDB.get error:'); console.error(err); console.error(scanParams); }
+
+            data.config = result.Items.reduce((config, item) => {
+                config[item.Key] = item.Value
+                return config;
+            }, {});
+
+            resolve(data);
+        })
+    });
+}
+
 function loadRecentMatches(data)
 {
     const userPromises = data.dbUsers.map((user) => {
@@ -87,14 +110,12 @@ function loadMatches(data)
     return Promise.all(matchDetails).then(() => { return Promise.resolve(data); });
 }
 
-function getGameMode(modeID) {
-    let result = DotaConstants.gameModes[modeID];
-
-    if (modeID === 19 && 'eventName' in process.env) {
-        result = process.env.eventName;
+function getGameMode(modeID, config) {
+    if (modeID === 19 && 'event_name' in config) {
+        return config.event_name;
     }
 
-    return result;
+    return DotaConstants.gameModes[modeID];
 }
 
 function sendDiscordMessage(data)
@@ -115,7 +136,7 @@ function sendDiscordMessage(data)
 
         const skill = DotaConstants.skillIDs[match.skill];
         const lobby = DotaConstants.lobbyTypes[match.lobby_type];
-        const gameMode = getGameMode(match.game_mode);
+        const gameMode = getGameMode(match.game_mode, data.config);
         const hero = DotaConstants.heroes[dotaPlayer.hero_id];
         const isRadiant = (dotaPlayer.player_slot < 128);
         const team = (isRadiant) ? 'radiant' : 'dire';
@@ -243,11 +264,13 @@ function updateDB(data)
 module.exports = (event, context, callback) => {
     const sharedData = {
         dbUsers: [],
+        config: {},
         users: {},
         matches: {},
     };
 
     loadDBUsers(sharedData)
+        .then(loadConfig)
         .then(loadRecentMatches)
         .then(loadPlayers)
         .then(loadMatches)
