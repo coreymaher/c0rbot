@@ -1,74 +1,82 @@
-'use strict';
+"use strict";
 
-const request = require('request');
+const request = require("request");
 
-module.exports = function()
-{
-    let channels = {};
-    let userAgent = '';
-    let apikey = '';
+module.exports = function () {
+  let channels = {};
+  let userAgent = "";
+  let apikey = "";
 
-    function init(data)
-    {
-        channels = data.channels;
-        userAgent = data.userAgent;
-        apikey = data.apikey;
-    }
+  function init(data) {
+    channels = data.channels;
+    userAgent = data.userAgent;
+    apikey = data.apikey;
+  }
 
-    function sendMessage(message, channel)
-    {
-        return new Promise((resolve, reject) => {
-            if (!message) { message = ''; }
-            if (!channel) { channel = 'default'; }
+  function sendMessage(message, channel) {
+    return new Promise((resolve, reject) => {
+      if (!message) {
+        message = "";
+      }
+      if (!channel) {
+        channel = "default";
+      }
 
-            if (!(channel in channels)) {
-                console.error(`Unknown channel: ${channel}`);
-                return reject();
-            }
+      if (!(channel in channels)) {
+        console.error(`Unknown channel: ${channel}`);
+        return reject();
+      }
 
-            request.post({
-                url: `https://discordapp.com/api/channels/${channels[channel]}/messages`,
-                headers: {
-                    'User-Agent': userAgent,
-                    'Authorization': `Bot ${apikey}`,
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    content: message,
-                }),
-            }, function(err, response, body) {
-                resolve();
-            });
-        });
-    }
+      request.post(
+        {
+          url: `https://discordapp.com/api/channels/${channels[channel]}/messages`,
+          headers: {
+            "User-Agent": userAgent,
+            Authorization: `Bot ${apikey}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            content: message,
+          }),
+        },
+        function (err, response, body) {
+          resolve();
+        }
+      );
+    });
+  }
 
-    function sendEmbed(embed, channel)
-    {
-        return new Promise((resolve, reject) => {
-            if (!channel) { channel = 'default'; }
+  function sendEmbed(embed, channel) {
+    return new Promise((resolve, reject) => {
+      if (!channel) {
+        channel = "default";
+      }
 
-            if (!(channel in channels)) {
-                console.error(`Unknown channel: ${channel}`);
-                return reject();
-            }
+      if (!(channel in channels)) {
+        console.error(`Unknown channel: ${channel}`);
+        return reject();
+      }
 
-            request.post({
-                url: `https://discordapp.com/api/channels/${channels[channel]}/messages`,
-                headers: {
-                    'User-Agent': userAgent,
-                    'Authorization': `Bot ${apikey}`,
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    embed: embed,
-                }),
-            }, function(err, response, body) {
-                resolve();
-            });
-        });
-    }
+      request.post(
+        {
+          url: `https://discordapp.com/api/channels/${channels[channel]}/messages`,
+          headers: {
+            "User-Agent": userAgent,
+            Authorization: `Bot ${apikey}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            embed: embed,
+          }),
+        },
+        function (err, response, body) {
+          resolve();
+        }
+      );
+    });
+  }
 
-    this.init = init.bind(this);
-    this.sendMessage = sendMessage.bind(this);
-    this.sendEmbed = sendEmbed.bind(this);
-}
+  this.init = init.bind(this);
+  this.sendMessage = sendMessage.bind(this);
+  this.sendEmbed = sendEmbed.bind(this);
+};

@@ -1,21 +1,27 @@
 const environment = {
-    discord: {
-        channels: {
-            default: 'CHANNEL_ID_HERE',
-        },
-        userAgent: 'USER_AGENT_HERE',
-        apikey: 'API_KEY_HERE',
+  discord: {
+    channels: {
+      default: "CHANNEL_ID_HERE",
     },
-    dota: {
-        apikey: 'API_KEY_HERE',
-    },
-    twitch: {
-        apikey: 'API_KEY_HERE',
-    },
+    userAgent: "USER_AGENT_HERE",
+    apikey: "API_KEY_HERE",
+  },
+  dota: {
+    apikey: "API_KEY_HERE",
+  },
+  twitch: {
+    apikey: "API_KEY_HERE",
+  },
+  fortnite: {
+    apikey: "API_KEY_HERE",
+  },
+  pubg: {
+    apikey: "API_KEY_HERE",
+  },
 };
 
-module.exports.environment = function() {
-    return {
-        environment: JSON.stringify(environment),
-    };
-}
+module.exports.environment = function () {
+  return {
+    environment: JSON.stringify(environment),
+  };
+};

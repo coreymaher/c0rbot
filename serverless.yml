@@ -1,203 +1,210 @@
 service: reddit
 
 provider:
-    name: aws
-    runtime: nodejs10.x
-    timeout: 30
-    versionFunctions: false
-    environment: ${file(environment.js):environment}
-    iamRoleStatements:
-        - Effect: "Allow"
-          Action:
-              - dynamodb:GetItem
-              - dynamodb:PutItem
-          Resource: arn:aws:dynamodb:*:*:table/feeds-${self:provider.stage}
-        - Effect: "Allow"
-          Action:
-              - dynamodb:GetItem
-              - dynamodb:PutItem
-              - dynamodb:UpdateItem
-              - dynamodb:Scan
-          Resource: arn:aws:dynamodb:*:*:table/dota-players-${self:provider.stage}
-        - Effect: "Allow"
-          Action:
-              - dynamodb:GetItem
-              - dynamodb:PutItem
-              - dynamodb:UpdateItem
-              - dynamodb:Scan
-          Resource: arn:aws:dynamodb:*:*:table/fortnite
-        - Effect: "Allow"
-          Action:
-              - dynamodb:GetItem
-              - dynamodb:PutItem
-              - dynamodb:UpdateItem
-              - dynamodb:Scan
-          Resource: arn:aws:dynamodb:*:*:table/pubg
-        - Effect: "Allow"
-          Action:
-              - dynamodb:GetItem
-              - dynamodb:PutItem
-              - dynamodb:UpdateItem
-              - dynamodb:Scan
-          Resource: arn:aws:dynamodb:*:*:table/config
+  name: aws
+  runtime: nodejs10.x
+  timeout: 30
+  profile: personal
+  versionFunctions: false
+  environment: ${file(environment.js):environment}
+  iamRoleStatements:
+    - Effect: "Allow"
+      Action:
+        - dynamodb:GetItem
+        - dynamodb:PutItem
+      Resource: arn:aws:dynamodb:*:*:table/feeds-${self:provider.stage}
+    - Effect: "Allow"
+      Action:
+        - dynamodb:GetItem
+        - dynamodb:PutItem
+        - dynamodb:UpdateItem
+        - dynamodb:Scan
+      Resource: arn:aws:dynamodb:*:*:table/dota-players-${self:provider.stage}
+    - Effect: "Allow"
+      Action:
+        - dynamodb:GetItem
+        - dynamodb:PutItem
+        - dynamodb:UpdateItem
+        - dynamodb:Scan
+      Resource: arn:aws:dynamodb:*:*:table/fortnite
+    - Effect: "Allow"
+      Action:
+        - dynamodb:GetItem
+        - dynamodb:PutItem
+        - dynamodb:UpdateItem
+        - dynamodb:Scan
+      Resource: arn:aws:dynamodb:*:*:table/pubg
+    - Effect: "Allow"
+      Action:
+        - dynamodb:GetItem
+        - dynamodb:PutItem
+        - dynamodb:UpdateItem
+        - dynamodb:Scan
+      Resource: arn:aws:dynamodb:*:*:table/config
 
 functions:
-    redditFeed:
-        environment:
-            table: feeds-${self:provider.stage}
-        handler: handler.redditFeed
-        events:
-            - schedule: rate(5 minutes)
-    dotaBlog:
-        environment:
-            table: feeds-${self:provider.stage}
-        handler: handler.dotaBlog
-        events:
-            - schedule: rate(5 minutes)
-    pokemongoUpdates:
-        environment:
-            table: feeds-${self:provider.stage}
-        handler: handler.pokemongoUpdates
-        events:
-            - schedule:
-                rate: rate(30 minutes)
-                enabled: false
-    twitchStreams:
-        environment:
-            table: feeds-${self:provider.stage}
-        handler: handler.twitchStreams
-        events:
-            - schedule:
-                rate: rate(5 minutes)
-                enabled: false
-    arkChangelog:
-        environment:
-            table: feeds-${self:provider.stage}
-        handler: handler.arkChangelog
-        events:
-            - schedule:
-                rate: rate(30 minutes)
-                enabled: false
-    dotaMatches:
-        environment:
-            table: dota-players-${self:provider.stage}
-        handler: handler.dotaMatches
-    openDotaMatches:
-        environment:
-            table: dota-players-${self:provider.stage}
-        handler: handler.openDotaMatches
-        events:
-            - schedule: rate(10 minutes)
-    dotaUpdates:
-        environment:
-            table: feeds-${self:provider.stage}
-        handler: handler.dotaUpdates
-        events:
-            - schedule: rate(5 minutes)
-    steamUpdates:
-        environment:
-            table: feeds-${self:provider.stage}
-        handler: handler.steamUpdates
-        events:
-            - schedule: rate(5 minutes)
-    fortniteMatches:
-        environment:
-            table: fortnite
-        handler: handler.fortniteMatches
-        events:
-            - schedule:
-                rate: rate(15 minutes)
-                enabled: false
-    fortniteChangelog:
-        environment:
-            table: feeds-${self:provider.stage}
-        handler: handler.fortniteChangelog
-        events:
-            - schedule: rate(30 minutes)
-    pubgMatches:
-        environment:
-            table: pubg
-        handler: handler.pubgMatches
-        timeout: 300
-        events:
-            - schedule: rate(5 minutes)
-    underlordsChangelog:
-        environment:
-            table: feeds-${self:provider.stage}
-        handler: handler.underlordsChangelog
-        events:
-            - schedule: rate(30 minutes)
-    embedTest:
-        handler: handler.embedTest
+  redditFeed:
+    environment:
+      table: feeds-${self:provider.stage}
+    handler: handler.redditFeed
+    events:
+      - schedule: rate(5 minutes)
+  dotaBlog:
+    environment:
+      table: feeds-${self:provider.stage}
+    handler: handler.dotaBlog
+    events:
+      - schedule: rate(5 minutes)
+  pokemongoUpdates:
+    environment:
+      table: feeds-${self:provider.stage}
+    handler: handler.pokemongoUpdates
+    events:
+      - schedule:
+        rate: rate(30 minutes)
+        enabled: false
+  twitchStreams:
+    environment:
+      table: feeds-${self:provider.stage}
+    handler: handler.twitchStreams
+    events:
+      - schedule:
+        rate: rate(5 minutes)
+        enabled: false
+  arkChangelog:
+    environment:
+      table: feeds-${self:provider.stage}
+    handler: handler.arkChangelog
+    events:
+      - schedule:
+        rate: rate(30 minutes)
+        enabled: false
+  dotaMatches:
+    environment:
+      table: dota-players-${self:provider.stage}
+    handler: handler.dotaMatches
+  openDotaMatches:
+    environment:
+      table: dota-players-${self:provider.stage}
+    handler: handler.openDotaMatches
+    events:
+      - schedule: rate(10 minutes)
+  dotaUpdates:
+    environment:
+      table: feeds-${self:provider.stage}
+    handler: handler.dotaUpdates
+    events:
+      - schedule: rate(5 minutes)
+  steamUpdates:
+    environment:
+      table: feeds-${self:provider.stage}
+    handler: handler.steamUpdates
+    events:
+      - schedule: rate(5 minutes)
+  fortniteMatches:
+    environment:
+      table: fortnite
+    handler: handler.fortniteMatches
+    events:
+      - schedule:
+        rate: rate(15 minutes)
+        enabled: false
+  fortniteChangelog:
+    environment:
+      table: feeds-${self:provider.stage}
+    handler: handler.fortniteChangelog
+    events:
+      - schedule:
+        rate: rate(30 minutes)
+        enabled: false
+  pubgMatches:
+    environment:
+      table: pubg
+    handler: handler.pubgMatches
+    timeout: 300
+    events:
+      - schedule:
+        rate: rate(5 minutes)
+        enabled: false
+  underlordsChangelog:
+    environment:
+      table: feeds-${self:provider.stage}
+    handler: handler.underlordsChangelog
+    events:
+      - schedule:
+        rate: rate(30 minutes)
+        enabled: false
+  embedTest:
+    handler: handler.embedTest
 
 resources:
-    Resources:
-        FeedsTable:
-            Type: AWS::DynamoDB::Table
-            Properties:
-                TableName: feeds-${self:provider.stage}
-                AttributeDefinitions:
-                    - AttributeName: name
-                      AttributeType: S
-                KeySchema:
-                    - AttributeName: name
-                      KeyType: HASH
-                ProvisionedThroughput:
-                    ReadCapacityUnits: 5
-                    WriteCapacityUnits: 5
-        DotaPlayersTable:
-            Type: AWS::DynamoDB::Table
-            Properties:
-                TableName: dota-players-${self:provider.stage}
-                AttributeDefinitions:
-                    - AttributeName: steamID
-                      AttributeType: S
-                KeySchema:
-                    - AttributeName: steamID
-                      KeyType: HASH
-                ProvisionedThroughput:
-                    ReadCapacityUnits: 5
-                    WriteCapacityUnits: 5
-        FortniteTable:
-            Type: AWS::DynamoDB::Table
-            Properties:
-                TableName: fortnite
-                AttributeDefinitions:
-                    - AttributeName: name
-                      AttributeType: S
-                KeySchema:
-                    - AttributeName: name
-                      KeyType: HASH
-                ProvisionedThroughput:
-                    ReadCapacityUnits: 5
-                    WriteCapacityUnits: 5
-        PubgTable:
-            Type: AWS::DynamoDB::Table
-            Properties:
-                TableName: pubg
-                AttributeDefinitions:
-                    - AttributeName: id
-                      AttributeType: S
-                KeySchema:
-                    - AttributeName: id
-                      KeyType: HASH
-                ProvisionedThroughput:
-                    ReadCapacityUnits: 5
-                    WriteCapacityUnits: 5
-        ConfigTable:
-            Type: AWS::DynamoDB::Table
-            Properties:
-                TableName: config
-                AttributeDefinitions:
-                    - AttributeName: Key
-                      AttributeType: S
-                    - AttributeName: ConfigScope
-                      AttributeType: S
-                KeySchema:
-                    - AttributeName: Key
-                      KeyType: HASH
-                    - AttributeName: ConfigScope
-                      KeyType: RANGE
-                ProvisionedThroughput:
-                    ReadCapacityUnits: 5
-                    WriteCapacityUnits: 5
+  Resources:
+    FeedsTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: feeds-${self:provider.stage}
+        AttributeDefinitions:
+          - AttributeName: name
+            AttributeType: S
+        KeySchema:
+          - AttributeName: name
+            KeyType: HASH
+        ProvisionedThroughput:
+          ReadCapacityUnits: 5
+          WriteCapacityUnits: 5
+    DotaPlayersTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: dota-players-${self:provider.stage}
+        AttributeDefinitions:
+          - AttributeName: steamID
+            AttributeType: S
+        KeySchema:
+          - AttributeName: steamID
+            KeyType: HASH
+        ProvisionedThroughput:
+          ReadCapacityUnits: 5
+          WriteCapacityUnits: 5
+    FortniteTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: fortnite
+        AttributeDefinitions:
+          - AttributeName: name
+            AttributeType: S
+        KeySchema:
+          - AttributeName: name
+            KeyType: HASH
+        ProvisionedThroughput:
+          ReadCapacityUnits: 5
+          WriteCapacityUnits: 5
+    PubgTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: pubg
+        AttributeDefinitions:
+          - AttributeName: id
+            AttributeType: S
+        KeySchema:
+          - AttributeName: id
+            KeyType: HASH
+        ProvisionedThroughput:
+          ReadCapacityUnits: 5
+          WriteCapacityUnits: 5
+    ConfigTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: config
+        AttributeDefinitions:
+          - AttributeName: Key
+            AttributeType: S
+          - AttributeName: ConfigScope
+            AttributeType: S
+        KeySchema:
+          - AttributeName: Key
+            KeyType: HASH
+          - AttributeName: ConfigScope
+            KeyType: RANGE
+        ProvisionedThroughput:
+          ReadCapacityUnits: 5
+          WriteCapacityUnits: 5
