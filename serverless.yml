@@ -134,6 +134,12 @@ functions:
       - schedule:
         rate: rate(30 minutes)
         enabled: false
+  valheimPatches:
+    environment:
+      table: feeds-${self:provider.stage}
+    handler: handlers/valheim.handler
+    events:
+      - schedule: rate(30 minutes)
   embedTest:
     handler: handler.embedTest
 
