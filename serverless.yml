@@ -140,6 +140,12 @@ functions:
     handler: handlers/valheim.handler
     events:
       - schedule: rate(30 minutes)
+  noMansSkyPatches:
+    environment:
+      table: feeds-${self:provider.stage}
+    handler: handlers/NoMansSky.handler
+    events:
+      - schedule: rate(30 minutes)
   embedTest:
     handler: handler.embedTest
 
