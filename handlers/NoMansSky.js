@@ -24,13 +24,25 @@ module.exports.handler = async () => {
 
   const item = $(element);
   const link = item.find("a").attr("href");
-  const title = item.find(".grid__cell-content h2").text();
+  const version = item.find(".grid__cell-content h2").text();
+  const description = item
+    .find(".grid__cell-content p")
+    .clone()
+    .children()
+    .remove()
+    .end()
+    .text()
+    .trim();
+
+  const full_link = link[0] === "/" ? `https://www.nomanssky.com${link}` : link;
+  const short_description =
+    description.length > 200 ? `${description.substr(0, 200)}...` : description;
 
   if (!db.Item || db.Item.feed_data != link) {
     const embed = {
-      title: "There is a new No Man's Sky update",
-      description: title,
-      url: link,
+      title: `There is a new No Man's Sky update: ${version}`,
+      description: short_description,
+      url: full_link,
       thumbnail: {
         url: "https://www.nomanssky.com/wp-content/uploads/2017/02/logo.png",
       },
