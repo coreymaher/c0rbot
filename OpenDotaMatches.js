@@ -67,7 +67,7 @@ function loadRecentMatches(data) {
   const userPromises = data.dbUsers.map((user) => {
     return OpenDotaAPI.getLatestMatch(user.steamID).then((matches) => {
       const match = matches[0];
-      if (match.match_id != user.last_matchID) {
+      if (match && match.match_id != user.last_matchID) {
         data.matches[match.match_id] = {};
         data.users[user.steamID] = {
           matchID: match.match_id,
