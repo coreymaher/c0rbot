@@ -19,9 +19,9 @@ module.exports.handler = async () => {
   const event = data.events.find((item) =>
     /(\d+.\d+.\d+)/.exec(item.event_name)
   );
+  const id = event.announcement_body ? event.announcement_body.gid : null;
 
-  if (event && (!db.Item || db.Item.feed_data != event.gidfeature)) {
-    const id = event.gidfeature;
+  if (event && id && (!db.Item || db.Item.feed_data != id)) {
     const title = event.event_name;
     const link = `https://steamcommunity.com/games/892970/announcements/detail/${id}`;
 
