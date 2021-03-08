@@ -146,6 +146,12 @@ functions:
     handler: handlers/NoMansSky.handler
     events:
       - schedule: rate(30 minutes)
+  loopHeroPatches:
+    environment:
+      table: feeds-${self:provider.stage}
+    handler: handlers/LoopHero.handler
+    events:
+      - schedule: rate(1 hour)
   embedTest:
     handler: handler.embedTest
 
