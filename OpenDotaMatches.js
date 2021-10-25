@@ -141,7 +141,6 @@ function sendDiscordMessage(data) {
     const gameMode = getGameMode(match.game_mode, data.config);
     const hero = DotaConstants.heroes[dotaPlayer.hero_id];
     const isRadiant = dotaPlayer.player_slot < 128;
-    const team = isRadiant ? "radiant" : "dire";
     const result = match.radiant_win == isRadiant ? "won" : "lost";
     const heroDamage = formatNumber(dotaPlayer.hero_damage);
     const towerDamage = formatNumber(dotaPlayer.tower_damage);
