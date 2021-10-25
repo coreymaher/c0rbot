@@ -12,7 +12,9 @@
     "protobufjs": "^6.8.6",
     "request": "^2.88.0"
   },
-  "devDependencies": {},
+  "devDependencies": {
+    "serverless": "1.46.1"
+  },
   "scripts": {},
   "author": "",
   "license": "ISC"

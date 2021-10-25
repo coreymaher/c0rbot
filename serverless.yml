@@ -4,7 +4,7 @@ provider:
   name: aws
   runtime: nodejs10.x
   timeout: 30
-  profile: personal
+  profile: c0rbot
   versionFunctions: false
   environment: ${file(environment.js):environment}
   iamRoleStatements:
