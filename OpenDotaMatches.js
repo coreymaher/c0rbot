@@ -168,7 +168,7 @@ function sendDiscordMessage(data) {
     }
     duration += `${durationMinutes}m ${durationSeconds}s`;
 
-    const thumbnail_url = `http://cdn.dota2.com/apps/dota2/images/heroes/${hero.image}_full.png`;
+    const thumbnail_url = `http://cdn.dota2.com/apps/dota2/images/heroes/${hero.image}.png`;
 
     let description = `${user.personaname} ${result} a `;
     if (skill) {
