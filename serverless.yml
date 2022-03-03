@@ -2,7 +2,7 @@ service: reddit
 
 provider:
   name: aws
-  runtime: nodejs10.x
+  runtime: nodejs14.x
   timeout: 30
   profile: c0rbot
   versionFunctions: false
