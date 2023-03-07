@@ -543,6 +543,10 @@ module.exports.heroes = {
     name: "Primal Beast",
     image: "primal_beast",
   },
+  138: {
+    name: "Muerta",
+    image: "muerta",
+  }
 };
 
 module.exports.rankTiers = {

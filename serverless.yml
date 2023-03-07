@@ -1,8 +1,9 @@
 service: reddit
+frameworkVersion: "3"
 
 provider:
   name: aws
-  runtime: nodejs14.x
+  runtime: nodejs18.x
   timeout: 30
   profile: c0rbot
   versionFunctions: false
@@ -12,14 +13,14 @@ provider:
       Action:
         - dynamodb:GetItem
         - dynamodb:PutItem
-      Resource: arn:aws:dynamodb:*:*:table/feeds-${self:provider.stage}
+      Resource: arn:aws:dynamodb:*:*:table/feeds-${sls:stage}
     - Effect: "Allow"
       Action:
         - dynamodb:GetItem
         - dynamodb:PutItem
         - dynamodb:UpdateItem
         - dynamodb:Scan
-      Resource: arn:aws:dynamodb:*:*:table/dota-players-${self:provider.stage}
+      Resource: arn:aws:dynamodb:*:*:table/dota-players-${sls:stage}
     - Effect: "Allow"
       Action:
         - dynamodb:GetItem
@@ -45,59 +46,59 @@ provider:
 functions:
   redditFeed:
     environment:
-      table: feeds-${self:provider.stage}
+      table: feeds-${sls:stage}
     handler: handler.redditFeed
     events:
       - schedule: rate(5 minutes)
   dotaBlog:
     environment:
-      table: feeds-${self:provider.stage}
+      table: feeds-${sls:stage}
     handler: handler.dotaBlog
     events:
       - schedule: rate(5 minutes)
   pokemongoUpdates:
     environment:
-      table: feeds-${self:provider.stage}
+      table: feeds-${sls:stage}
     handler: handler.pokemongoUpdates
     events:
       - schedule:
-        rate: rate(30 minutes)
-        enabled: false
+          rate: rate(30 minutes)
+          enabled: false
   twitchStreams:
     environment:
-      table: feeds-${self:provider.stage}
+      table: feeds-${sls:stage}
     handler: handler.twitchStreams
     events:
       - schedule:
-        rate: rate(5 minutes)
-        enabled: false
+          rate: rate(5 minutes)
+          enabled: false
   arkChangelog:
     environment:
-      table: feeds-${self:provider.stage}
+      table: feeds-${sls:stage}
     handler: handler.arkChangelog
     events:
       - schedule:
-        rate: rate(30 minutes)
-        enabled: false
+          rate: rate(30 minutes)
+          enabled: false
   dotaMatches:
     environment:
-      table: dota-players-${self:provider.stage}
+      table: dota-players-${sls:stage}
     handler: handler.dotaMatches
   openDotaMatches:
     environment:
-      table: dota-players-${self:provider.stage}
+      table: dota-players-${sls:stage}
     handler: handler.openDotaMatches
     events:
       - schedule: rate(10 minutes)
   dotaUpdates:
     environment:
-      table: feeds-${self:provider.stage}
+      table: feeds-${sls:stage}
     handler: handler.dotaUpdates
     events:
       - schedule: rate(5 minutes)
   steamUpdates:
     environment:
-      table: feeds-${self:provider.stage}
+      table: feeds-${sls:stage}
     handler: handler.steamUpdates
     events:
       - schedule: rate(5 minutes)
@@ -107,16 +108,16 @@ functions:
     handler: handler.fortniteMatches
     events:
       - schedule:
-        rate: rate(15 minutes)
-        enabled: false
+          rate: rate(15 minutes)
+          enabled: false
   fortniteChangelog:
     environment:
-      table: feeds-${self:provider.stage}
+      table: feeds-${sls:stage}
     handler: handler.fortniteChangelog
     events:
       - schedule:
-        rate: rate(30 minutes)
-        enabled: false
+          rate: rate(30 minutes)
+          enabled: false
   pubgMatches:
     environment:
       table: pubg
@@ -124,31 +125,31 @@ functions:
     timeout: 300
     events:
       - schedule:
-        rate: rate(5 minutes)
-        enabled: false
+          rate: rate(5 minutes)
+          enabled: false
   underlordsChangelog:
     environment:
-      table: feeds-${self:provider.stage}
+      table: feeds-${sls:stage}
     handler: handler.underlordsChangelog
     events:
       - schedule:
-        rate: rate(30 minutes)
-        enabled: false
+          rate: rate(30 minutes)
+          enabled: false
   valheimPatches:
     environment:
-      table: feeds-${self:provider.stage}
+      table: feeds-${sls:stage}
     handler: handlers/valheim.handler
     events:
       - schedule: rate(30 minutes)
   noMansSkyPatches:
     environment:
-      table: feeds-${self:provider.stage}
+      table: feeds-${sls:stage}
     handler: handlers/NoMansSky.handler
     events:
       - schedule: rate(30 minutes)
   loopHeroPatches:
     environment:
-      table: feeds-${self:provider.stage}
+      table: feeds-${sls:stage}
     handler: handlers/LoopHero.handler
     events:
       - schedule: rate(1 hour)
@@ -160,7 +161,7 @@ resources:
     FeedsTable:
       Type: AWS::DynamoDB::Table
       Properties:
-        TableName: feeds-${self:provider.stage}
+        TableName: feeds-${sls:stage}
         AttributeDefinitions:
           - AttributeName: name
             AttributeType: S
@@ -173,7 +174,7 @@ resources:
     DotaPlayersTable:
       Type: AWS::DynamoDB::Table
       Properties:
-        TableName: dota-players-${self:provider.stage}
+        TableName: dota-players-${sls:stage}
         AttributeDefinitions:
           - AttributeName: steamID
             AttributeType: S
