@@ -531,6 +531,10 @@ module.exports.heroes = {
     name: "Mars",
     image: "mars",
   },
+  131: {
+    name: "Ringmaster",
+    image: "ringmaster",
+  },
   135: {
     name: "Dawnbreaker",
     image: "dawnbreaker",
