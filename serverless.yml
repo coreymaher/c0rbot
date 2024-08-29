@@ -34,14 +34,14 @@ provider:
         - dynamodb:PutItem
         - dynamodb:UpdateItem
         - dynamodb:Scan
-      Resource: arn:aws:dynamodb:*:*:table/pubg
+      Resource: arn:aws:dynamodb:*:*:table/config
     - Effect: "Allow"
       Action:
         - dynamodb:GetItem
         - dynamodb:PutItem
         - dynamodb:UpdateItem
         - dynamodb:Scan
-      Resource: arn:aws:dynamodb:*:*:table/config
+      Resource: arn:aws:dynamodb:*:*:table/matches
 
 functions:
   redditFeed:
@@ -153,6 +153,13 @@ functions:
     handler: handlers/LoopHero.handler
     events:
       - schedule: rate(1 hour)
+  deadlockMatches:
+    environment:
+      table: deadlock-players-${sls:stage}
+    handler: handlers/DeadlockMatches.handler
+    events:
+      - schedule:
+          rate: rate(30 minutes)
   embedTest:
     handler: handler.embedTest
 
@@ -197,16 +204,20 @@ resources:
         ProvisionedThroughput:
           ReadCapacityUnits: 5
           WriteCapacityUnits: 5
-    PubgTable:
+    MatchesTable:
       Type: AWS::DynamoDB::Table
       Properties:
-        TableName: pubg
+        TableName: matches
         AttributeDefinitions:
-          - AttributeName: id
+          - AttributeName: player_id
+            AttributeType: S
+          - AttributeName: game
             AttributeType: S
         KeySchema:
-          - AttributeName: id
+          - AttributeName: player_id
             KeyType: HASH
+          - AttributeName: game
+            KeyType: RANGE
         ProvisionedThroughput:
           ReadCapacityUnits: 5
           WriteCapacityUnits: 5
