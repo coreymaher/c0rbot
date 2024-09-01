@@ -159,7 +159,7 @@ functions:
     handler: handlers/DeadlockMatches.handler
     events:
       - schedule:
-          rate: rate(30 minutes)
+          rate: rate(15 minutes)
   embedTest:
     handler: handler.embedTest
 

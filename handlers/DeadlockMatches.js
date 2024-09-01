@@ -12,6 +12,30 @@ const docClient = new AWS.DynamoDB.DocumentClient();
 const environment = JSON.parse(process.env.environment);
 discord.init(environment.discord);
 
+const heroURLs = {
+  'abrams': 'https://cdn.wikimg.net/en/deadlockwiki/images/9/99/Bull_card_psd.png',
+  'bebop': 'https://cdn.wikimg.net/en/deadlockwiki/images/6/62/Bebop_card_psd.png',
+  'dynamo': 'https://cdn.wikimg.net/en/deadlockwiki/images/f/fc/Sumo_card_psd.png',
+  'grey talon': 'https://cdn.wikimg.net/en/deadlockwiki/images/5/53/Archer_card_psd.png',
+  'haze': 'https://cdn.wikimg.net/en/deadlockwiki/images/7/7b/Haze_card_psd.png',
+  'infernus': 'https://cdn.wikimg.net/en/deadlockwiki/images/b/b4/Inferno_card_psd.png',
+  'ivy': 'https://cdn.wikimg.net/en/deadlockwiki/images/1/17/Tengu_card_psd.png',
+  'kelvin': 'https://cdn.wikimg.net/en/deadlockwiki/images/4/45/Kelvin_card_psd.png',
+  'lady geist': 'https://cdn.wikimg.net/en/deadlockwiki/images/6/67/Spectre_card_psd.png',
+  'lash': 'https://cdn.wikimg.net/en/deadlockwiki/images/c/c3/Lash_card_psd.png',
+  'mcginnis': 'https://cdn.wikimg.net/en/deadlockwiki/images/4/4e/Engineer_card_psd.png',
+  'mo & krill': 'https://cdn.wikimg.net/en/deadlockwiki/images/d/d2/Digger_card_psd.png',
+  'paradox': 'https://cdn.wikimg.net/en/deadlockwiki/images/4/4a/Chrono_card_psd.png',
+  'pocket': 'https://cdn.wikimg.net/en/deadlockwiki/images/4/42/Synth_card_psd.png',
+  'seven': 'https://cdn.wikimg.net/en/deadlockwiki/images/1/11/Gigawatt_card_psd.png',
+  'shiv': 'https://cdn.wikimg.net/en/deadlockwiki/images/2/29/Shiv_card_psd.png',
+  'vindicta': 'https://cdn.wikimg.net/en/deadlockwiki/images/b/b4/Hornet_card_psd.png',
+  'viscous': 'https://cdn.wikimg.net/en/deadlockwiki/images/5/5c/Viscous_card_psd.png',
+  'warden': 'https://cdn.wikimg.net/en/deadlockwiki/images/b/ba/Warden_card_psd.png',
+  'wraith': 'https://cdn.wikimg.net/en/deadlockwiki/images/c/cb/Wraith_card_psd.png',
+  'yamato': 'https://cdn.wikimg.net/en/deadlockwiki/images/c/cb/Yamato_card_psd.png',
+};
+
 const scanParams = {
   TableName: "matches",
   FilterExpression: "game = :s",
@@ -77,7 +101,7 @@ module.exports.handler = async () => {
       .closest("table")
       .find("tbody tr")
       .first()
-      .find("td")
+      .find("td");
 
     const rowData = latestMatchRow.map((_, td) => $(td).text()).get();
     if (rowData.length === 0) continue;
@@ -92,9 +116,18 @@ module.exports.handler = async () => {
     const fields = [];
 
     if (rowData[4] !== "-") {
+      let kda = rowData[4];
+
+      try {
+        const [, kills, deaths, assists] = /^(\d+).*?(\d+).*?(\d+)/s.exec(rowData[4]);
+        kda = `${kills} / ${deaths} / ${assists}`;
+      } catch (e) {
+        console.error(e);
+      }
+
       fields.push({
         name: "k / d / a",
-        value: rowData[4],
+        value: kda,
         inline: true,
       });
     }
@@ -110,17 +143,35 @@ module.exports.handler = async () => {
     if (rowData[7] !== "-") {
       fields.push({
         name: "souls per minute",
-        value: rowData[7],
+        value: Math.round(rowData[7]) || rowData[7],
         inline: true,
       });
     }
 
     if (rowData[5] !== "-") {
+      let value = rowData[5];
+      try {
+        const duration = parseFloat(rowData[5]);
+        const minutes = Math.floor(duration);
+        const seconds = Math.floor((duration - minutes) * 60);
+
+        value = `${minutes}m ${seconds}s`;
+      } catch (e) {
+        // ignore
+      }
+
       fields.push({
         name: "duration",
-        value: rowData[5],
+        value: value,
         inline: true,
       });
+    }
+
+    let thumbnail = undefined;
+    if (rowData[1].toLowerCase() in heroURLs) {
+      thumbnail = {
+        url: heroURLs[rowData[1].toLowerCase()],
+      };
     }
 
     fields.push({
@@ -135,13 +186,13 @@ module.exports.handler = async () => {
       },
       description,
       fields,
-      // thumbnail: {
-      //   url: thumbnail_url,
-      // },
+      thumbnail,
     };
 
-    await discord.sendEmbed(embed, "results");
-    await updateDB(user.player_id, latestMatchId);
+    const { discordError } = await discord.sendEmbed(embed, "results");
+    if (!discordError) {
+      await updateDB(user.player_id, latestMatchId);
+    }
   }
 
   return { message: "Done" };

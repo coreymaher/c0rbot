@@ -70,7 +70,18 @@ module.exports = function () {
           }),
         },
         function (err, response, body) {
-          resolve();
+          const hadError = !!err || response.statusCode !== 200;
+          if (hadError) {
+            console.error("Error sending discord message:");
+            console.error({
+              embed,
+              err,
+              statusCode: response?.statusCode,
+              body,
+            })
+          }
+
+          resolve({ error: hadError });
         }
       );
     });
