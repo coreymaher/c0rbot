@@ -49,13 +49,17 @@ functions:
       table: feeds-${sls:stage}
     handler: handler.redditFeed
     events:
-      - schedule: rate(5 minutes)
+      - schedule:
+          rate: rate(5 minutes)
+          enabled: false
   dotaBlog:
     environment:
       table: feeds-${sls:stage}
     handler: handler.dotaBlog
     events:
-      - schedule: rate(5 minutes)
+      - schedule:
+          rate: rate(5 minutes)
+          enabled: false
   pokemongoUpdates:
     environment:
       table: feeds-${sls:stage}
@@ -89,19 +93,25 @@ functions:
       table: dota-players-${sls:stage}
     handler: handler.openDotaMatches
     events:
-      - schedule: rate(10 minutes)
+      - schedule:
+          rate: rate(10 minutes)
+          enabled: true
   dotaUpdates:
     environment:
       table: feeds-${sls:stage}
     handler: handler.dotaUpdates
     events:
-      - schedule: rate(5 minutes)
+      - schedule:
+          rate: rate(5 minutes)
+          enabled: false
   steamUpdates:
     environment:
       table: feeds-${sls:stage}
     handler: handler.steamUpdates
     events:
-      - schedule: rate(5 minutes)
+      - schedule:
+          rate: rate(5 minutes)
+          enabled: false
   fortniteMatches:
     environment:
       table: fortnite
@@ -140,26 +150,41 @@ functions:
       table: feeds-${sls:stage}
     handler: handlers/valheim.handler
     events:
-      - schedule: rate(30 minutes)
+      - schedule:
+          rate: rate(1 hour)
+          enabled: true
   noMansSkyPatches:
     environment:
       table: feeds-${sls:stage}
     handler: handlers/NoMansSky.handler
     events:
-      - schedule: rate(30 minutes)
+      - schedule:
+          rate: rate(1 hour)
+          enabled: true
   loopHeroPatches:
     environment:
       table: feeds-${sls:stage}
     handler: handlers/LoopHero.handler
     events:
-      - schedule: rate(1 hour)
+      - schedule:
+          rate: rate(1 hour)
+          enabled: false
   deadlockMatches:
     environment:
       table: deadlock-players-${sls:stage}
     handler: handlers/DeadlockMatches.handler
     events:
       - schedule:
-          rate: rate(15 minutes)
+          rate: rate(1 hour)
+          enabled: true
+  deadlockPatches:
+    environment:
+      table: feeds-${sls:stage}
+    handler: handlers/DeadlockPatches.handler
+    events:
+      - schedule:
+          rate: rate(1 hour)
+          enabled: true
   embedTest:
     handler: handler.embedTest
 
