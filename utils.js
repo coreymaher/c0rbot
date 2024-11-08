@@ -5,9 +5,9 @@ const request = require("request");
 
 const docClient = new AWS.DynamoDB.DocumentClient();
 
-module.exports.simpleGet = async (url) => {
+module.exports.simpleGet = async (url, options = {}) => {
   return new Promise((resolve, reject) => {
-    request(url, (err, response, body) => {
+    request({ url, ...options }, (err, response, body) => {
       if (err) {
         console.error(`request error ${url}:`);
         console.error(err);
