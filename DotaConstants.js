@@ -550,7 +550,11 @@ module.exports.heroes = {
   138: {
     name: "Muerta",
     image: "muerta",
-  }
+  },
+  145: {
+    name: "Kez",
+    image: "kez",
+  },
 };
 
 module.exports.rankTiers = {
@@ -565,6 +569,7 @@ module.exports.rankTiers = {
   8: "Immortal",
 };
 
+// prettier-ignore
 module.exports.rankTierValues = [
   11,
   12,
