@@ -175,7 +175,7 @@ functions:
     handler: handlers/DeadlockMatches.handler
     events:
       - schedule:
-          rate: rate(1 hour)
+          rate: rate(20 minutes)
           enabled: true
   deadlockPatches:
     environment:
