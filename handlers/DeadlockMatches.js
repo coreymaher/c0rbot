@@ -110,6 +110,18 @@ function formatDuration(duration) {
   return parts.join(" ");
 }
 
+async function refreshProfile(accountId) {
+  const content = await utils.simpleGet(
+    "https://tracklock.gg/api/players/refresh",
+    { qs: { account_id: accountId }, timeout: 5000 }
+  );
+  if (!content) return false;
+
+  const data = JSON.parse(content);
+
+  return !!data?.success;
+}
+
 module.exports.handler = async () => {
   const users = await loadDBUsers();
 
@@ -117,8 +129,17 @@ module.exports.handler = async () => {
     console.log(
       `Loading the latest matches for: ${user.name} (${user.player_id})`
     );
+
+    console.log("Refreshing profile");
+    const refreshSuccess = await refreshProfile(user.player_id);
+    if (refreshSuccess) {
+      console.log("Profile refreshed");
+    } else {
+      console.log("Unable to refresh profile");
+    }
+
     const content = await utils.simpleGet(
-      "https://tracklock.gg/api/matches/player/",
+      "https://tracklock.gg/api/matches/player",
       {
         qs: {
           offset: 0,
@@ -126,6 +147,7 @@ module.exports.handler = async () => {
           hero_id: "all",
           match_mode: "all",
         },
+        timeout: 5000,
       }
     );
 

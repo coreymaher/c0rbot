@@ -173,6 +173,7 @@ functions:
     environment:
       table: deadlock-players-${sls:stage}
     handler: handlers/DeadlockMatches.handler
+    timeout: 60
     events:
       - schedule:
           rate: rate(20 minutes)
