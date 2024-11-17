@@ -115,11 +115,70 @@ async function refreshProfile(accountId) {
     "https://tracklock.gg/api/players/refresh",
     { qs: { account_id: accountId }, timeout: 5000 }
   );
-  if (!content) return false;
+  if (!content) return { parsed: null, raw: content };
 
-  const data = JSON.parse(content);
+  return {
+    parsed: JSON.parse(content),
+    raw: content,
+  };
+}
 
-  return !!data?.success;
+async function handleMatch(match, user) {
+  console.log(`Found match: ${match.match_id}`);
+  const result = match.match_result === match.player_team ? "won" : "lost";
+
+  const matchType = match.match_mode === 4 ? "a Ranked" : "an Unranked";
+
+  const description = `${user.name} ${result} ${matchType} Deadlock match as ${match.hero_name}`;
+  const fields = [];
+
+  fields.push({
+    name: "k / d / a",
+    value: `${match.player_kills} / ${match.player_deaths} / ${match.player_assists}`,
+    inline: true,
+  });
+
+  fields.push({
+    name: "last hits / denies",
+    value: `${match.last_hits} / ${match.denies}`,
+    inline: true,
+  });
+
+  fields.push({
+    name: "souls",
+    value: formatNumber(match.net_worth),
+    inline: true,
+  });
+
+  fields.push({
+    name: "duration",
+    value: formatDuration(match.match_duration_s),
+    inline: true,
+  });
+
+  let thumbnail = undefined;
+  if (match.hero_name.toLowerCase() in heroURLs) {
+    thumbnail = {
+      url: heroURLs[match.hero_name.toLowerCase()],
+    };
+  }
+
+  fields.push({
+    name: "more",
+    value: `[tracklock](https://tracklock.gg/players/${user.player_id})`,
+  });
+
+  const embed = {
+    author: {
+      name: user.name,
+      icon_url: user.avatar || undefined,
+    },
+    description,
+    fields,
+    thumbnail,
+  };
+
+  return await discord.sendEmbed(embed, "results");
 }
 
 module.exports.handler = async () => {
@@ -131,11 +190,11 @@ module.exports.handler = async () => {
     );
 
     console.log("Refreshing profile");
-    const refreshSuccess = await refreshProfile(user.player_id);
-    if (refreshSuccess) {
+    const refreshResponse = await refreshProfile(user.player_id);
+    if (refreshResponse.parsed?.success) {
       console.log("Profile refreshed");
     } else {
-      console.log("Unable to refresh profile");
+      console.log(`Unable to refresh profile: ${refreshResponse.raw}`);
     }
 
     const content = await utils.simpleGet(
@@ -157,75 +216,27 @@ module.exports.handler = async () => {
     }
 
     const matches = JSON.parse(content);
-    const match = matches[0];
-
-    if (!match) {
-      console.error("Unable to parse latest match");
-      continue;
+    const seenIndex = matches.findIndex(
+      (match) => match.match_id == user.last_match_id
+    );
+    if (seenIndex === -1) {
+      seenIndex = matches.length;
     }
-
-    if (match.match_id == user.last_match_id) {
+    if (seenIndex === 0) {
       console.log("No new match found");
       continue;
     }
 
-    console.log(`Found new match: ${match.match_id}`);
-    const result = match.match_result === match.player_team ? "won" : "lost";
+    const results = await Promise.all(
+      matches
+        .slice(0, seenIndex)
+        .reverse()
+        .map(async (match) => await handleMatch(match, user))
+    );
+    const successful = results.some(({ error }) => !error);
 
-    const matchType = match.match_mode === 4 ? "Ranked" : "Unranked";
-
-    const description = `${user.name} ${result} a ${matchType} Deadlock match as ${match.hero_name}`;
-    const fields = [];
-
-    fields.push({
-      name: "k / d / a",
-      value: `${match.player_kills} / ${match.player_deaths} / ${match.player_assists}`,
-      inline: true,
-    });
-
-    fields.push({
-      name: "last hits / denies",
-      value: `${match.last_hits} / ${match.denies}`,
-      inline: true,
-    });
-
-    fields.push({
-      name: "souls",
-      value: formatNumber(match.net_worth),
-      inline: true,
-    });
-
-    fields.push({
-      name: "duration",
-      value: formatDuration(match.match_duration_s),
-      inline: true,
-    });
-
-    let thumbnail = undefined;
-    if (match.hero_name.toLowerCase() in heroURLs) {
-      thumbnail = {
-        url: heroURLs[match.hero_name.toLowerCase()],
-      };
-    }
-
-    fields.push({
-      name: "more",
-      value: `[tracklock](https://tracklock.gg/players/${user.player_id})`,
-    });
-
-    const embed = {
-      author: {
-        name: user.name,
-        icon_url: user.avatar || undefined,
-      },
-      description,
-      fields,
-      thumbnail,
-    };
-
-    const { discordError } = await discord.sendEmbed(embed, "results");
-    if (!discordError) {
-      await updateDB(user.player_id, match.match_id);
+    if (successful) {
+      await updateDB(user.player_id, matches[0].match_id);
     }
   }
 
