@@ -3,7 +3,7 @@ frameworkVersion: "3"
 
 provider:
   name: aws
-  runtime: nodejs18.x
+  runtime: nodejs22.x
   timeout: 30
   profile: c0rbot
   versionFunctions: false
@@ -176,7 +176,7 @@ functions:
     timeout: 60
     events:
       - schedule:
-          rate: rate(20 minutes)
+          rate: rate(30 minutes)
           enabled: true
   deadlockPatches:
     environment:

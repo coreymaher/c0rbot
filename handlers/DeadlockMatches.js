@@ -11,45 +11,168 @@ const docClient = new AWS.DynamoDB.DocumentClient();
 const environment = JSON.parse(process.env.environment);
 discord.init(environment.discord);
 
-const heroURLs = {
-  abrams:
-    "https://cdn.wikimg.net/en/deadlockwiki/images/9/99/Bull_card_psd.png",
-  bebop:
-    "https://cdn.wikimg.net/en/deadlockwiki/images/6/62/Bebop_card_psd.png",
-  dynamo:
-    "https://cdn.wikimg.net/en/deadlockwiki/images/f/fc/Sumo_card_psd.png",
-  "grey talon":
-    "https://cdn.wikimg.net/en/deadlockwiki/images/5/53/Archer_card_psd.png",
-  haze: "https://cdn.wikimg.net/en/deadlockwiki/images/7/7b/Haze_card_psd.png",
-  infernus:
-    "https://cdn.wikimg.net/en/deadlockwiki/images/b/b4/Inferno_card_psd.png",
-  ivy: "https://cdn.wikimg.net/en/deadlockwiki/images/1/17/Tengu_card_psd.png",
-  kelvin:
-    "https://cdn.wikimg.net/en/deadlockwiki/images/4/45/Kelvin_card_psd.png",
-  "lady geist":
-    "https://cdn.wikimg.net/en/deadlockwiki/images/6/67/Spectre_card_psd.png",
-  lash: "https://cdn.wikimg.net/en/deadlockwiki/images/c/c3/Lash_card_psd.png",
-  mcginnis:
-    "https://cdn.wikimg.net/en/deadlockwiki/images/4/4e/Engineer_card_psd.png",
-  "mo & krill":
-    "https://cdn.wikimg.net/en/deadlockwiki/images/d/d2/Digger_card_psd.png",
-  paradox:
-    "https://cdn.wikimg.net/en/deadlockwiki/images/4/4a/Chrono_card_psd.png",
-  pocket:
-    "https://cdn.wikimg.net/en/deadlockwiki/images/4/42/Synth_card_psd.png",
-  seven:
-    "https://cdn.wikimg.net/en/deadlockwiki/images/1/11/Gigawatt_card_psd.png",
-  shiv: "https://cdn.wikimg.net/en/deadlockwiki/images/2/29/Shiv_card_psd.png",
-  vindicta:
-    "https://cdn.wikimg.net/en/deadlockwiki/images/b/b4/Hornet_card_psd.png",
-  viscous:
-    "https://cdn.wikimg.net/en/deadlockwiki/images/5/5c/Viscous_card_psd.png",
-  warden:
-    "https://cdn.wikimg.net/en/deadlockwiki/images/b/ba/Warden_card_psd.png",
-  wraith:
-    "https://cdn.wikimg.net/en/deadlockwiki/images/c/cb/Wraith_card_psd.png",
-  yamato:
-    "https://cdn.wikimg.net/en/deadlockwiki/images/c/cb/Yamato_card_psd.png",
+const heroes = {
+  1: {
+    name: "Infernus",
+    image: "https://assets.deadlock-api.com/images/heroes/inferno_card.png",
+  },
+  2: {
+    name: "Seven",
+    image: "https://assets.deadlock-api.com/images/heroes/gigawatt_card.png",
+  },
+  3: {
+    name: "Vindicta",
+    image: "https://assets.deadlock-api.com/images/heroes/hornet_card.png",
+  },
+  4: {
+    name: "Lady Geist",
+    image: "https://assets.deadlock-api.com/images/heroes/spectre_card.png",
+  },
+  6: {
+    name: "Abrams",
+    image: "https://assets.deadlock-api.com/images/heroes/bull_card.png",
+  },
+  7: {
+    name: "Wraith",
+    image: "https://assets.deadlock-api.com/images/heroes/wraith_card.png",
+  },
+  8: {
+    name: "McGinnis",
+    image: "https://assets.deadlock-api.com/images/heroes/engineer_card.png",
+  },
+  10: {
+    name: "Paradox",
+    image: "https://assets.deadlock-api.com/images/heroes/chrono_card.png",
+  },
+  11: {
+    name: "Dynamo",
+    image: "https://assets.deadlock-api.com/images/heroes/sumo_card.png",
+  },
+  12: {
+    name: "Kelvin",
+    image: "https://assets.deadlock-api.com/images/heroes/kelvin_card.png",
+  },
+  13: {
+    name: "Haze",
+    image: "https://assets.deadlock-api.com/images/heroes/haze_card.png",
+  },
+  14: {
+    name: "Holliday",
+    image: "https://assets.deadlock-api.com/images/heroes/astro_card.png",
+  },
+  15: {
+    name: "Bebop",
+    image: "https://assets.deadlock-api.com/images/heroes/bebop_card.png",
+  },
+  16: {
+    name: "Calico",
+    image: "https://assets.deadlock-api.com/images/heroes/nano_card.png",
+  },
+  17: {
+    name: "Grey Talon",
+    image: "https://assets.deadlock-api.com/images/heroes/archer_card.png",
+  },
+  18: {
+    name: "Mo & Krill",
+    image: "https://assets.deadlock-api.com/images/heroes/digger_card.png",
+  },
+  19: {
+    name: "Shiv",
+    image: "https://assets.deadlock-api.com/images/heroes/shiv_card.png",
+  },
+  20: {
+    name: "Ivy",
+    image: "https://assets.deadlock-api.com/images/heroes/tengu_card.png",
+  },
+  21: {
+    name: "Kali",
+    image: "https://assets.deadlock-api.com/images/heroes/kali_card.png",
+  },
+  25: {
+    name: "Warden",
+    image: "https://assets.deadlock-api.com/images/heroes/warden_card.png",
+  },
+  27: {
+    name: "Yamato",
+    image: "https://assets.deadlock-api.com/images/heroes/yamato_card.png",
+  },
+  31: {
+    name: "Lash",
+    image: "https://assets.deadlock-api.com/images/heroes/lash_card.png",
+  },
+  35: {
+    name: "Viscous",
+    image: "https://assets.deadlock-api.com/images/heroes/viscous_card.png",
+  },
+  38: {
+    name: "Gunslinger",
+    image: "https://assets.deadlock-api.com/images/heroes/gunslinger_sm.png",
+  },
+  39: {
+    name: "The Boss",
+    image: "https://assets.deadlock-api.com/images/heroes/yakuza_sm.png",
+  },
+  47: {
+    name: "Tokamak",
+    image:
+      "https://assets.deadlock-api.com/images/hud/hero_portraits/tokamak_hud.png",
+  },
+  48: {
+    name: "Wrecker",
+    image: "https://assets.deadlock-api.com/images/heroes/wrecker_card.png",
+  },
+  49: {
+    name: "Rutger",
+    image: "https://assets.deadlock-api.com/images/heroes/rutger_card.png",
+  },
+  50: {
+    name: "Pocket",
+    image: "https://assets.deadlock-api.com/images/heroes/synth_card.png",
+  },
+  51: {
+    name: "Thumper",
+    image: "https://assets.deadlock-api.com/images/heroes/thumper_sm.png",
+  },
+  52: {
+    name: "Mirage",
+    image: "https://assets.deadlock-api.com/images/heroes/mirage_card.png",
+  },
+  53: {
+    name: "Fathom",
+    image: "https://assets.deadlock-api.com/images/heroes/slork_card.png",
+  },
+  54: {
+    name: "Cadence",
+    image: "https://assets.deadlock-api.com/images/heroes/cadence_sm.png",
+  },
+  56: {
+    name: "Bomber",
+    image: "",
+  },
+  57: {
+    name: "Shield Guy",
+    image: "",
+  },
+  58: {
+    name: "Vyper",
+    image: "https://assets.deadlock-api.com/images/heroes/kali_card.png",
+  },
+  59: {
+    name: "Vandal",
+    image: "https://assets.deadlock-api.com/images/heroes/vandal_card.png",
+  },
+  60: {
+    name: "The Magnificent Sinclair",
+    image: "https://assets.deadlock-api.com/images/heroes/magician_card.png",
+  },
+  61: {
+    name: "Trapper",
+    image: "https://assets.deadlock-api.com/images/heroes/trapper_card.png",
+  },
+  62: {
+    name: "Raven",
+    image: "https://assets.deadlock-api.com/images/heroes/operative_card.png",
+  },
 };
 
 const scanParams = {
@@ -110,26 +233,14 @@ function formatDuration(duration) {
   return parts.join(" ");
 }
 
-async function refreshProfile(accountId) {
-  const content = await utils.simpleGet(
-    "https://tracklock.gg/api/players/refresh",
-    { qs: { account_id: accountId }, timeout: 5000 }
-  );
-  if (!content) return { parsed: null, raw: content };
-
-  return {
-    parsed: JSON.parse(content),
-    raw: content,
-  };
-}
-
 async function handleMatch(match, user) {
   console.log(`Found match: ${match.match_id}`);
   const result = match.match_result === match.player_team ? "won" : "lost";
+  const hero = heroes[match.hero_id];
 
   const matchType = match.match_mode === 4 ? "a Ranked" : "an Unranked";
 
-  const description = `${user.name} ${result} ${matchType} Deadlock match as ${match.hero_name}`;
+  const description = `${user.name} ${result} ${matchType} Deadlock match as ${hero.name}`;
   const fields = [];
 
   fields.push({
@@ -157,15 +268,15 @@ async function handleMatch(match, user) {
   });
 
   let thumbnail = undefined;
-  if (match.hero_name.toLowerCase() in heroURLs) {
+  if (hero.image) {
     thumbnail = {
-      url: heroURLs[match.hero_name.toLowerCase()],
+      url: hero.image,
     };
   }
 
   fields.push({
     name: "more",
-    value: `[tracklock](https://tracklock.gg/players/${user.player_id})`,
+    value: `[Deadlock Rank](https://deadlockrank.com/match/${match.match_id})`,
   });
 
   const embed = {
@@ -189,23 +300,9 @@ module.exports.handler = async () => {
       `Loading the latest matches for: ${user.name} (${user.player_id})`
     );
 
-    console.log("Refreshing profile");
-    const refreshResponse = await refreshProfile(user.player_id);
-    if (refreshResponse.parsed?.success) {
-      console.log("Profile refreshed");
-    } else {
-      console.log(`Unable to refresh profile: ${refreshResponse.raw}`);
-    }
-
     const content = await utils.simpleGet(
-      "https://tracklock.gg/api/matches/player",
+      `https://data.deadlock-api.com/v2/players/${user.player_id}/match-history`,
       {
-        qs: {
-          offset: 0,
-          account_id: user.player_id,
-          hero_id: "all",
-          match_mode: "all",
-        },
         timeout: 5000,
       }
     );
@@ -215,8 +312,8 @@ module.exports.handler = async () => {
       continue;
     }
 
-    const matches = JSON.parse(content);
-    const seenIndex = matches.findIndex(
+    const data = JSON.parse(content);
+    const seenIndex = data.matches.findIndex(
       (match) => match.match_id == user.last_match_id
     );
     if (seenIndex === -1) {
@@ -228,7 +325,7 @@ module.exports.handler = async () => {
     }
 
     const results = await Promise.all(
-      matches
+      data.matches
         .slice(0, seenIndex)
         .reverse()
         .map(async (match) => await handleMatch(match, user))
@@ -236,7 +333,7 @@ module.exports.handler = async () => {
     const successful = results.some(({ error }) => !error);
 
     if (successful) {
-      await updateDB(user.player_id, matches[0].match_id);
+      await updateDB(user.player_id, data.matches[0].match_id);
     }
   }
 
