@@ -175,6 +175,21 @@ const heroes = {
   },
 };
 
+const ranks = [
+  "Obscurus",
+  "Initiate",
+  "Seeker",
+  "Alchemist",
+  "Arcanist",
+  "Ritualist",
+  "Emissary",
+  "Archon",
+  "Oracle",
+  "Phantom",
+  "Ascendant",
+  "Eternus",
+];
+
 const scanParams = {
   TableName: "matches",
   FilterExpression: "game = :s",
@@ -233,9 +248,19 @@ function formatDuration(duration) {
   return parts.join(" ");
 }
 
+function formatRank(average) {
+  if (average == null) return null;
+
+  const rank = Math.floor(average / 10);
+  const subrank = average % 10;
+
+  return ranks[rank] ? `${ranks[rank]} ${subrank}` : null;
+}
+
 async function handleMatch(match, user) {
   console.log(`Found match: ${match.match_id}`);
-  const result = match.match_result === match.player_team ? "won" : "lost";
+  const result =
+    `Team${match.match_result}` === match.player_team ? "won" : "lost";
   const hero = heroes[match.hero_id];
 
   const matchType = match.match_mode === 4 ? "a Ranked" : "an Unranked";
@@ -266,6 +291,15 @@ async function handleMatch(match, user) {
     value: formatDuration(match.match_duration_s),
     inline: true,
   });
+
+  const rank = formatRank(match.average_match_badge);
+  if (rank) {
+    fields.push({
+      name: "rank",
+      value: rank,
+      inline: true,
+    });
+  }
 
   let thumbnail = undefined;
   if (hero.image) {
@@ -301,7 +335,7 @@ module.exports.handler = async () => {
     );
 
     const content = await utils.simpleGet(
-      `https://data.deadlock-api.com/v2/players/${user.player_id}/match-history`,
+      `https://analytics.deadlock-api.com/v2/players/${user.player_id}/match-history`,
       {
         timeout: 5000,
       }
@@ -313,11 +347,11 @@ module.exports.handler = async () => {
     }
 
     const data = JSON.parse(content);
-    const seenIndex = data.matches.findIndex(
+    const seenIndex = data.findIndex(
       (match) => match.match_id == user.last_match_id
     );
     if (seenIndex === -1) {
-      seenIndex = matches.length;
+      seenIndex = data.length;
     }
     if (seenIndex === 0) {
       console.log("No new match found");
@@ -325,7 +359,7 @@ module.exports.handler = async () => {
     }
 
     const results = await Promise.all(
-      data.matches
+      data
         .slice(0, seenIndex)
         .reverse()
         .map(async (match) => await handleMatch(match, user))
@@ -333,7 +367,7 @@ module.exports.handler = async () => {
     const successful = results.some(({ error }) => !error);
 
     if (successful) {
-      await updateDB(user.player_id, data.matches[0].match_id);
+      await updateDB(user.player_id, data[0].match_id);
     }
   }
 
