@@ -276,7 +276,7 @@ async function handleMatch(match, user) {
 
   fields.push({
     name: "more",
-    value: `[Deadlock Rank](https://deadlockrank.com/match/${match.match_id})`,
+    value: `[Stats](https://deadlock.blast.tv/matches/${match.match_id})`,
   });
 
   const embed = {
