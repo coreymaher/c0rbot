@@ -259,13 +259,10 @@ function formatRank(average) {
 
 async function handleMatch(match, user) {
   console.log(`Found match: ${match.match_id}`);
-  const result =
-    `Team${match.match_result}` === match.player_team ? "won" : "lost";
+  const result = match.match_result === match.player_team ? "won" : "lost";
   const hero = heroes[match.hero_id];
 
-  const matchType = match.match_mode === 4 ? "a Ranked" : "an Unranked";
-
-  const description = `${user.name} ${result} ${matchType} Deadlock match as ${hero.name}`;
+  const description = `${user.name} ${result} a Deadlock match as ${hero.name}`;
   const fields = [];
 
   fields.push({
@@ -335,7 +332,7 @@ module.exports.handler = async () => {
     );
 
     const content = await utils.simpleGet(
-      `https://analytics.deadlock-api.com/v2/players/${user.player_id}/match-history`,
+      `https://api.deadlock-api.com/v1/players/${user.player_id}/match-history`,
       {
         timeout: 5000,
       }

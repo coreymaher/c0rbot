@@ -176,7 +176,7 @@ functions:
     timeout: 60
     events:
       - schedule:
-          rate: rate(30 minutes)
+          rate: rate(15 minutes)
           enabled: true
   deadlockPatches:
     environment:
