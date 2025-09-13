@@ -54,506 +54,632 @@ module.exports.heroes = {
   1: {
     name: "Anti-Mage",
     image: "antimage",
+    raw_name: "npc_dota_hero_antimage",
   },
   2: {
     name: "Axe",
     image: "axe",
+    raw_name: "npc_dota_hero_axe",
   },
   3: {
     name: "Bane",
     image: "bane",
+    raw_name: "npc_dota_hero_bane",
   },
   4: {
     name: "Bloodseeker",
     image: "bloodseeker",
+    raw_name: "npc_dota_hero_bloodseeker",
   },
   5: {
     name: "Crystal Maiden",
     image: "crystal_maiden",
+    raw_name: "npc_dota_hero_crystal_maiden",
   },
   6: {
     name: "Drow Ranger",
     image: "drow_ranger",
+    raw_name: "npc_dota_hero_drow_ranger",
   },
   7: {
     name: "Earthshaker",
     image: "earthshaker",
+    raw_name: "npc_dota_hero_earthshaker",
   },
   8: {
     name: "Juggernaut",
     image: "juggernaut",
+    raw_name: "npc_dota_hero_juggernaut",
   },
   9: {
     name: "Mirana",
     image: "mirana",
-  },
-  11: {
-    name: "Shadow Fiend",
-    image: "nevermore",
+    raw_name: "npc_dota_hero_mirana",
   },
   10: {
     name: "Morphling",
     image: "morphling",
+    raw_name: "npc_dota_hero_morphling",
+  },
+  11: {
+    name: "Shadow Fiend",
+    image: "nevermore",
+    raw_name: "npc_dota_hero_nevermore",
   },
   12: {
     name: "Phantom Lancer",
     image: "phantom_lancer",
+    raw_name: "npc_dota_hero_phantom_lancer",
   },
   13: {
     name: "Puck",
     image: "puck",
+    raw_name: "npc_dota_hero_puck",
   },
   14: {
     name: "Pudge",
     image: "pudge",
+    raw_name: "npc_dota_hero_pudge",
   },
   15: {
     name: "Razor",
     image: "razor",
+    raw_name: "npc_dota_hero_razor",
   },
   16: {
     name: "Sand King",
     image: "sand_king",
+    raw_name: "npc_dota_hero_sand_king",
   },
   17: {
     name: "Storm Spirit",
     image: "storm_spirit",
+    raw_name: "npc_dota_hero_storm_spirit",
   },
   18: {
     name: "Sven",
     image: "sven",
+    raw_name: "npc_dota_hero_sven",
   },
   19: {
     name: "Tiny",
     image: "tiny",
+    raw_name: "npc_dota_hero_tiny",
   },
   20: {
     name: "Vengeful Spirit",
     image: "vengefulspirit",
+    raw_name: "npc_dota_hero_vengefulspirit",
   },
   21: {
     name: "Windranger",
     image: "windrunner",
+    raw_name: "npc_dota_hero_windrunner",
   },
   22: {
     name: "Zeus",
     image: "zuus",
+    raw_name: "npc_dota_hero_zuus",
   },
   23: {
     name: "Kunkka",
     image: "kunkka",
+    raw_name: "npc_dota_hero_kunkka",
   },
   25: {
     name: "Lina",
     image: "lina",
-  },
-  31: {
-    name: "Lich",
-    image: "lich",
+    raw_name: "npc_dota_hero_lina",
   },
   26: {
     name: "Lion",
     image: "lion",
+    raw_name: "npc_dota_hero_lion",
   },
   27: {
     name: "Shadow Shaman",
     image: "shadow_shaman",
+    raw_name: "npc_dota_hero_shadow_shaman",
   },
   28: {
     name: "Slardar",
     image: "slardar",
+    raw_name: "npc_dota_hero_slardar",
   },
   29: {
     name: "Tidehunter",
     image: "tidehunter",
+    raw_name: "npc_dota_hero_tidehunter",
   },
   30: {
     name: "Witch Doctor",
     image: "witch_doctor",
+    raw_name: "npc_dota_hero_witch_doctor",
+  },
+  31: {
+    name: "Lich",
+    image: "lich",
+    raw_name: "npc_dota_hero_lich",
   },
   32: {
     name: "Riki",
     image: "riki",
+    raw_name: "npc_dota_hero_riki",
   },
   33: {
     name: "Enigma",
     image: "enigma",
+    raw_name: "npc_dota_hero_enigma",
   },
   34: {
     name: "Tinker",
     image: "tinker",
+    raw_name: "npc_dota_hero_tinker",
   },
   35: {
     name: "Sniper",
     image: "sniper",
+    raw_name: "npc_dota_hero_sniper",
   },
   36: {
     name: "Necrophos",
     image: "necrolyte",
+    raw_name: "npc_dota_hero_necrolyte",
   },
   37: {
     name: "Warlock",
     image: "warlock",
+    raw_name: "npc_dota_hero_warlock",
   },
   38: {
     name: "Beastmaster",
     image: "beastmaster",
+    raw_name: "npc_dota_hero_beastmaster",
   },
   39: {
     name: "Queen of Pain",
     image: "queenofpain",
+    raw_name: "npc_dota_hero_queenofpain",
   },
   40: {
     name: "Venomancer",
     image: "venomancer",
+    raw_name: "npc_dota_hero_venomancer",
   },
   41: {
     name: "Faceless Void",
     image: "faceless_void",
+    raw_name: "npc_dota_hero_faceless_void",
   },
   42: {
     name: "Wraith King",
     image: "skeleton_king",
+    raw_name: "npc_dota_hero_skeleton_king",
   },
   43: {
     name: "Death Prophet",
     image: "death_prophet",
+    raw_name: "npc_dota_hero_death_prophet",
   },
   44: {
     name: "Phantom Assassin",
     image: "phantom_assassin",
+    raw_name: "npc_dota_hero_phantom_assassin",
   },
   45: {
     name: "Pugna",
     image: "pugna",
+    raw_name: "npc_dota_hero_pugna",
   },
   46: {
     name: "Templar Assassin",
     image: "templar_assassin",
+    raw_name: "npc_dota_hero_templar_assassin",
   },
   47: {
     name: "Viper",
     image: "viper",
+    raw_name: "npc_dota_hero_viper",
   },
   48: {
     name: "Luna",
     image: "luna",
+    raw_name: "npc_dota_hero_luna",
   },
   49: {
     name: "Dragon Knight",
     image: "dragon_knight",
+    raw_name: "npc_dota_hero_dragon_knight",
   },
   50: {
     name: "Dazzle",
     image: "dazzle",
+    raw_name: "npc_dota_hero_dazzle",
   },
   51: {
     name: "Clockwerk",
     image: "rattletrap",
+    raw_name: "npc_dota_hero_rattletrap",
   },
   52: {
     name: "Leshrac",
     image: "leshrac",
+    raw_name: "npc_dota_hero_leshrac",
   },
   53: {
     name: "Nature's Prophet",
     image: "furion",
+    raw_name: "npc_dota_hero_furion",
   },
   54: {
     name: "Lifestealer",
     image: "life_stealer",
+    raw_name: "npc_dota_hero_life_stealer",
   },
   55: {
     name: "Dark Seer",
     image: "dark_seer",
+    raw_name: "npc_dota_hero_dark_seer",
   },
   56: {
     name: "Clinkz",
     image: "clinkz",
+    raw_name: "npc_dota_hero_clinkz",
   },
   57: {
     name: "Omniknight",
     image: "omniknight",
+    raw_name: "npc_dota_hero_omniknight",
   },
   58: {
     name: "Enchantress",
     image: "enchantress",
+    raw_name: "npc_dota_hero_enchantress",
   },
   59: {
     name: "Huskar",
     image: "huskar",
+    raw_name: "npc_dota_hero_huskar",
   },
   60: {
     name: "Night Stalker",
     image: "night_stalker",
+    raw_name: "npc_dota_hero_night_stalker",
   },
   61: {
     name: "Broodmother",
     image: "broodmother",
+    raw_name: "npc_dota_hero_broodmother",
   },
   62: {
     name: "Bounty Hunter",
     image: "bounty_hunter",
+    raw_name: "npc_dota_hero_bounty_hunter",
   },
   63: {
     name: "Weaver",
     image: "weaver",
+    raw_name: "npc_dota_hero_weaver",
   },
   64: {
     name: "Jakiro",
     image: "jakiro",
+    raw_name: "npc_dota_hero_jakiro",
   },
   65: {
     name: "Batrider",
     image: "batrider",
+    raw_name: "npc_dota_hero_batrider",
   },
   66: {
     name: "Chen",
     image: "chen",
+    raw_name: "npc_dota_hero_chen",
   },
   67: {
     name: "Spectre",
     image: "spectre",
-  },
-  69: {
-    name: "Doom",
-    image: "doom_bringer",
+    raw_name: "npc_dota_hero_spectre",
   },
   68: {
     name: "Ancient Apparition",
     image: "ancient_apparition",
+    raw_name: "npc_dota_hero_ancient_apparition",
+  },
+  69: {
+    name: "Doom",
+    image: "doom_bringer",
+    raw_name: "npc_dota_hero_doom_bringer",
   },
   70: {
     name: "Ursa",
     image: "ursa",
+    raw_name: "npc_dota_hero_ursa",
   },
   71: {
     name: "Spirit Breaker",
     image: "spirit_breaker",
+    raw_name: "npc_dota_hero_spirit_breaker",
   },
   72: {
     name: "Gyrocopter",
     image: "gyrocopter",
+    raw_name: "npc_dota_hero_gyrocopter",
   },
   73: {
     name: "Alchemist",
     image: "alchemist",
+    raw_name: "npc_dota_hero_alchemist",
   },
   74: {
     name: "Invoker",
     image: "invoker",
+    raw_name: "npc_dota_hero_invoker",
   },
   75: {
     name: "Silencer",
     image: "silencer",
+    raw_name: "npc_dota_hero_silencer",
   },
   76: {
     name: "Outworld Devourer",
     image: "obsidian_destroyer",
+    raw_name: "npc_dota_hero_obsidian_destroyer",
   },
   77: {
     name: "Lycan",
     image: "lycan",
+    raw_name: "npc_dota_hero_lycan",
   },
   78: {
     name: "Brewmaster",
     image: "brewmaster",
+    raw_name: "npc_dota_hero_brewmaster",
   },
   79: {
     name: "Shadow Demon",
     image: "shadow_demon",
+    raw_name: "npc_dota_hero_shadow_demon",
   },
   80: {
     name: "Lone Druid",
     image: "lone_druid",
+    raw_name: "npc_dota_hero_lone_druid",
   },
   81: {
     name: "Chaos Knight",
     image: "chaos_knight",
+    raw_name: "npc_dota_hero_chaos_knight",
   },
   82: {
     name: "Meepo",
     image: "meepo",
+    raw_name: "npc_dota_hero_meepo",
   },
   83: {
     name: "Treant Protector",
     image: "treant",
+    raw_name: "npc_dota_hero_treant",
   },
   84: {
     name: "Ogre Magi",
     image: "ogre_magi",
+    raw_name: "npc_dota_hero_ogre_magi",
   },
   85: {
     name: "Undying",
     image: "undying",
+    raw_name: "npc_dota_hero_undying",
   },
   86: {
     name: "Rubick",
     image: "rubick",
+    raw_name: "npc_dota_hero_rubick",
   },
   87: {
     name: "Disruptor",
     image: "disruptor",
+    raw_name: "npc_dota_hero_disruptor",
   },
   88: {
     name: "Nyx Assassin",
     image: "nyx_assassin",
+    raw_name: "npc_dota_hero_nyx_assassin",
   },
   89: {
     name: "Naga Siren",
     image: "naga_siren",
+    raw_name: "npc_dota_hero_naga_siren",
   },
   90: {
     name: "Keeper of the Light",
     image: "keeper_of_the_light",
+    raw_name: "npc_dota_hero_keeper_of_the_light",
   },
   91: {
     name: "Io",
     image: "wisp",
+    raw_name: "npc_dota_hero_wisp",
   },
   92: {
     name: "Visage",
     image: "visage",
+    raw_name: "npc_dota_hero_visage",
   },
   93: {
     name: "Slark",
     image: "slark",
+    raw_name: "npc_dota_hero_slark",
   },
   94: {
     name: "Medusa",
     image: "medusa",
+    raw_name: "npc_dota_hero_medusa",
   },
   95: {
     name: "Troll Warlord",
     image: "troll_warlord",
+    raw_name: "npc_dota_hero_troll_warlord",
   },
   96: {
     name: "Centaur Warrunner",
     image: "centaur",
+    raw_name: "npc_dota_hero_centaur",
   },
   97: {
     name: "Magnus",
     image: "magnataur",
+    raw_name: "npc_dota_hero_magnataur",
   },
   98: {
     name: "Timbersaw",
     image: "shredder",
+    raw_name: "npc_dota_hero_shredder",
   },
   99: {
     name: "Bristleback",
     image: "bristleback",
+    raw_name: "npc_dota_hero_bristleback",
   },
   100: {
     name: "Tusk",
     image: "tusk",
+    raw_name: "npc_dota_hero_tusk",
   },
   101: {
     name: "Skywrath Mage",
     image: "skywrath_mage",
+    raw_name: "npc_dota_hero_skywrath_mage",
   },
   102: {
     name: "Abaddon",
     image: "abaddon",
+    raw_name: "npc_dota_hero_abaddon",
   },
   103: {
     name: "Elder Titan",
     image: "elder_titan",
+    raw_name: "npc_dota_hero_elder_titan",
   },
   104: {
     name: "Legion Commander",
     image: "legion_commander",
-  },
-  106: {
-    name: "Ember Spirit",
-    image: "ember_spirit",
-  },
-  107: {
-    name: "Earth Spirit",
-    image: "earth_spirit",
-  },
-  108: {
-    name: "Underlord",
-    image: "abyssal_underlord",
-  },
-  109: {
-    name: "Terrorblade",
-    image: "terrorblade",
-  },
-  110: {
-    name: "Phoenix",
-    image: "phoenix",
+    raw_name: "npc_dota_hero_legion_commander",
   },
   105: {
     name: "Techies",
     image: "techies",
+    raw_name: "npc_dota_hero_techies",
+  },
+  106: {
+    name: "Ember Spirit",
+    image: "ember_spirit",
+    raw_name: "npc_dota_hero_ember_spirit",
+  },
+  107: {
+    name: "Earth Spirit",
+    image: "earth_spirit",
+    raw_name: "npc_dota_hero_earth_spirit",
+  },
+  108: {
+    name: "Underlord",
+    image: "abyssal_underlord",
+    raw_name: "npc_dota_hero_abyssal_underlord",
+  },
+  109: {
+    name: "Terrorblade",
+    image: "terrorblade",
+    raw_name: "npc_dota_hero_terrorblade",
+  },
+  110: {
+    name: "Phoenix",
+    image: "phoenix",
+    raw_name: "npc_dota_hero_phoenix",
   },
   111: {
     name: "Oracle",
     image: "oracle",
+    raw_name: "npc_dota_hero_oracle",
   },
   112: {
     name: "Winter Wyvern",
     image: "winter_wyvern",
+    raw_name: "npc_dota_hero_winter_wyvern",
   },
   113: {
     name: "Arc Warden",
     image: "arc_warden",
+    raw_name: "npc_dota_hero_arc_warden",
   },
   114: {
     name: "Monkey King",
     image: "monkey_king",
+    raw_name: "npc_dota_hero_monkey_king",
   },
   119: {
     name: "Dark Willow",
     image: "dark_willow",
+    raw_name: "npc_dota_hero_dark_willow",
   },
   120: {
     name: "Pangolier",
     image: "pangolier",
+    raw_name: "npc_dota_hero_pangolier",
   },
   121: {
     name: "Grimstroke",
     image: "grimstroke",
+    raw_name: "npc_dota_hero_grimstroke",
   },
   123: {
     name: "Hoodwink",
     image: "hoodwink",
+    raw_name: "npc_dota_hero_hoodwink",
   },
   126: {
     name: "Void Spirit",
     image: "void_spirit",
+    raw_name: "npc_dota_hero_void_spirit",
   },
   128: {
     name: "Snapfire",
     image: "snapfire",
+    raw_name: "npc_dota_hero_snapfire",
   },
   129: {
     name: "Mars",
     image: "mars",
+    raw_name: "npc_dota_hero_mars",
   },
   131: {
-    name: "Ringmaster",
+    name: "Ring Master",
     image: "ringmaster",
+    raw_name: "npc_dota_hero_ringmaster",
   },
   135: {
     name: "Dawnbreaker",
     image: "dawnbreaker",
+    raw_name: "npc_dota_hero_dawnbreaker",
   },
   136: {
     name: "Marci",
     image: "marci",
+    raw_name: "npc_dota_hero_marci",
   },
   137: {
     name: "Primal Beast",
     image: "primal_beast",
+    raw_name: "npc_dota_hero_primal_beast",
   },
   138: {
     name: "Muerta",
     image: "muerta",
+    raw_name: "npc_dota_hero_muerta",
   },
   145: {
     name: "Kez",
     image: "kez",
+    raw_name: "npc_dota_hero_kez",
   },
 };
 

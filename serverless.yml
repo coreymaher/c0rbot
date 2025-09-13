@@ -42,6 +42,19 @@ provider:
         - dynamodb:UpdateItem
         - dynamodb:Scan
       Resource: arn:aws:dynamodb:*:*:table/matches
+    - Effect: "Allow"
+      Action:
+        - dynamodb:GetItem
+        - dynamodb:PutItem
+        - dynamodb:UpdateItem
+        - dynamodb:Scan
+      Resource: arn:aws:dynamodb:*:*:table/cache
+    - Effect: Allow
+      Action:
+        - lambda:InvokeFunction
+      Resource:
+        - arn:aws:lambda:${aws:region}:${aws:accountId}:function:${self:service}-${sls:stage}-dotaAnalyst
+        - arn:aws:lambda:${aws:region}:${aws:accountId}:function:${self:service}-${sls:stage}-dotaAnalyst:*
 
 functions:
   redditFeed:
@@ -176,7 +189,7 @@ functions:
     timeout: 60
     events:
       - schedule:
-          rate: rate(15 minutes)
+          rate: rate(30 minutes)
           enabled: true
   deadlockPatches:
     environment:
@@ -194,6 +207,13 @@ functions:
       - schedule:
           rate: rate(1 hour)
           enabled: true
+  dotaAnalystTrigger:
+    handler: handlers/DotaAnalystTrigger.handler
+    url:
+      authType: NONE
+  dotaAnalyst:
+    handler: handlers/DotaAnalyst.handler
+    timeout: 180
   embedTest:
     handler: handler.embedTest
 
@@ -268,6 +288,23 @@ resources:
           - AttributeName: Key
             KeyType: HASH
           - AttributeName: ConfigScope
+            KeyType: RANGE
+        ProvisionedThroughput:
+          ReadCapacityUnits: 5
+          WriteCapacityUnits: 5
+    CacheTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: cache
+        AttributeDefinitions:
+          - AttributeName: namespace
+            AttributeType: S
+          - AttributeName: key
+            AttributeType: S
+        KeySchema:
+          - AttributeName: namespace
+            KeyType: HASH
+          - AttributeName: key
             KeyType: RANGE
         ProvisionedThroughput:
           ReadCapacityUnits: 5

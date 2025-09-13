@@ -8,11 +8,13 @@
     "big-number": "^0.4.0",
     "cheerio": "^0.22.0",
     "crypto": "0.0.3",
+    "dotaconstants": "^9.5.0",
     "ordinal": "^1.0.2",
     "protobufjs": "^6.8.6",
     "request": "^2.88.0"
   },
   "devDependencies": {
+    "prettier": "^3.6.2",
     "serverless": "^3.28.1"
   },
   "scripts": {},

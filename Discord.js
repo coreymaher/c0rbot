@@ -46,7 +46,7 @@ module.exports = function () {
     });
   }
 
-  function sendEmbed(embed, channel) {
+  function sendEmbed(embed, channel, components) {
     return new Promise((resolve, reject) => {
       if (!channel) {
         channel = "default";
@@ -57,6 +57,14 @@ module.exports = function () {
         return reject();
       }
 
+      const payload = {
+        embeds: [embed],
+        allow_mentions: { parse: [] },
+      };
+      if (components) {
+        payload.components = components;
+      }
+
       request.post(
         {
           url: `https://discordapp.com/api/channels/${channels[channel]}/messages`,
@@ -65,9 +73,7 @@ module.exports = function () {
             Authorization: `Bot ${apikey}`,
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({
-            embed: embed,
-          }),
+          body: JSON.stringify(payload),
         },
         function (err, response, body) {
           const hadError = !!err || response.statusCode !== 200;
@@ -78,7 +84,7 @@ module.exports = function () {
               err,
               statusCode: response?.statusCode,
               body,
-            })
+            });
           }
 
           resolve({ error: hadError });
@@ -87,7 +93,24 @@ module.exports = function () {
     });
   }
 
+  async function sendInteractionResponse(
+    applicationID,
+    interactionToken,
+    payload,
+    update = true
+  ) {
+    const baseUrl = `https://discord.com/api/v10/webhooks/${applicationID}/${interactionToken}`;
+    const url = update ? `${baseUrl}/messages/@original` : baseUrl;
+
+    return await fetch(url, {
+      method: update ? "PATCH" : "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+  }
+
   this.init = init.bind(this);
   this.sendMessage = sendMessage.bind(this);
   this.sendEmbed = sendEmbed.bind(this);
+  this.sendInteractionResponse = sendInteractionResponse.bind(this);
 };

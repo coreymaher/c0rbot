@@ -5,6 +5,7 @@ const environment = {
     },
     userAgent: "USER_AGENT_HERE",
     apikey: "API_KEY_HERE",
+    publicKey: "PUBLIC_KEY_HERE",
   },
   dota: {
     apikey: "API_KEY_HERE",
@@ -18,6 +19,9 @@ const environment = {
   pubg: {
     apikey: "API_KEY_HERE",
   },
+  openai: {
+    apikey: "API_KEY_HERE",
+  }
 };
 
 module.exports.environment = function () {

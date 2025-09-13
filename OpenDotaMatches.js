@@ -245,16 +245,30 @@ function sendDiscordMessage(data) {
       value: `[dotabuff](https://www.dotabuff.com/matches/${matchID}) | [opendota](https://opendota.com/matches/${matchID})`,
     });
 
-    return Promise.resolve(embed);
+    const components = [
+      {
+        type: 1,
+        components: [
+          {
+            type: 2,
+            style: 1,
+            label: "Analyze",
+            custom_id: `ai:${matchID}:${userID}`,
+          },
+        ],
+      },
+    ];
+
+    return Promise.resolve({ embed, components });
   });
 
   return Promise.all(userPromises)
     .then((embeds) => {
       let promise = Promise.resolve();
 
-      embeds.forEach((embed) => {
+      embeds.forEach(({ embed, components }) => {
         promise = promise.then(() => {
-          return discord.sendEmbed(embed, "results");
+          return discord.sendEmbed(embed, "results", components);
         });
       });
 

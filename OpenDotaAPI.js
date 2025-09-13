@@ -36,9 +36,16 @@ function API() {
     return getRequest(`players/${steamID}`);
   }
 
+  async function requestParse(matchID) {
+    return await fetch(`${prefix}/request/${matchID}`, {
+      method: "POST",
+    });
+  }
+
   this.getMatch = getMatch.bind(this);
   this.getLatestMatch = getLatestMatch.bind(this);
   this.getPlayer = getPlayer.bind(this);
+  this.requestParse = requestParse.bind(this);
 }
 
 module.exports = new API();

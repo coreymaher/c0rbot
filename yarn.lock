@@ -1024,6 +1024,11 @@ domutils@^1.5.1:
     dom-serializer "0"
     domelementtype "1"
 
+dotaconstants@^9.5.0:
+  version "9.5.0"
+  resolved "https://registry.yarnpkg.com/dotaconstants/-/dotaconstants-9.5.0.tgz#b134c018f62e2b13edd97d1d5a1c2281d0cf3adc"
+  integrity sha512-D9qhzJ5d8h8tsOFETzkzAHVmE40RYV6jzwMElvvAlW61CiB6RqTY+TJQDOOhjWl5zqqw6Smew9gCIoD+hLdyEw==
+
 dotenv-expand@^9.0.0:
   version "9.0.0"
   resolved "https://registry.yarnpkg.com/dotenv-expand/-/dotenv-expand-9.0.0.tgz#1fd37e2cd63ea0b5f7389fb87256efc38b035b26"
@@ -2472,6 +2477,11 @@ pinkie@^2.0.0:
   version "2.0.4"
   resolved "https://registry.yarnpkg.com/pinkie/-/pinkie-2.0.4.tgz#72556b80cfa0d48a974e80e77248e80ed4f7f870"
   integrity sha1-clVrgM+g1IqXToDnckjoDtT3+HA=
+
+prettier@^3.6.2:
+  version "3.6.2"
+  resolved "https://registry.yarnpkg.com/prettier/-/prettier-3.6.2.tgz#ccda02a1003ebbb2bfda6f83a074978f608b9393"
+  integrity sha512-I7AIg5boAr5R0FFtJ6rCfD+LFsWHp81dolrFD8S79U9tb8Az2nGrJncnMSnys+bpQJfRUzqs9hnA81OAA3hCuQ==
 
 process-nextick-args@~2.0.0:
   version "2.0.1"
