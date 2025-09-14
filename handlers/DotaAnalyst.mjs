@@ -100,6 +100,8 @@ export async function handler(event) {
       true,
     );
 
+    console.log("Match payload for LLM:", JSON.stringify(match, null, 2));
+
     const analysis = await analyzeMatch(
       match,
       meta,
@@ -159,9 +161,19 @@ export async function handler(event) {
 
     await cache.set(cacheNamespace, cacheKey, JSON.stringify(analysisPayload));
   } catch (err) {
+    console.error("DotaAnalyst error:", err);
+
+    let errorMessage =
+      "Ran into an issue analyzing this match. Try again later.";
+
+    // Provide detailed error info for admin users
+    if (user_id === environment.discord.adminUserId) {
+      errorMessage = `**Admin Debug Info:**\n\`\`\`\nError: ${err.message}\nStack: ${err.stack}\nMatch ID: ${match_id}\nPlayer ID: ${player_id}\n\`\`\``;
+    }
+
     await discord.sendInteractionResponse(application_id, interaction_token, {
       flags: 64,
-      content: "Ran into an issue analyzing this match. Try again later.",
+      content: errorMessage,
       allowed_mentions: { parse: [] },
     });
 
@@ -237,7 +249,7 @@ async function generateCompactMatch(match, focusPlayerId) {
     radiantXpAdvantage: match.radiant_xp_adv,
     players: preparePlayers(match, focusPlayerId),
     log: prepareLog(match),
-    // teamfights: match.teamfights,
+    teamfights: processTeamfights(match, focusPlayerId),
   };
 
   return compactMatch;
@@ -306,7 +318,6 @@ function preparePlayers(match, focusPlayerId) {
         events: buildVisionEventList(player),
       },
       courierKills: player.courier_kills,
-      neutralItems: player.neutral_item_history,
       campsStacked: player.camps_stacked,
       combatAnalysis: processCombatAnalysis(player),
       chat: match.chat
@@ -344,6 +355,7 @@ function processDamageTaken(damageTaken) {
     towers: 0,
     creeps: 0,
     neutrals: 0,
+    roshan: 0,
     other: {},
   };
 
@@ -352,12 +364,17 @@ function processDamageTaken(damageTaken) {
       const hero = heroByRaw(source);
       const heroName = hero ? hero.name : source;
       processed.heroes[heroName] = damage;
-    } else if (source.startsWith("npc_dota_tower_")) {
+    } else if (source.includes("_tower")) {
       processed.towers += damage;
-    } else if (source.startsWith("npc_dota_creep_")) {
+    } else if (
+      source.startsWith("npc_dota_creep_") ||
+      source.includes("_siege")
+    ) {
       processed.creeps += damage;
     } else if (source.startsWith("npc_dota_neutral_")) {
       processed.neutrals += damage;
+    } else if (source === "npc_dota_roshan") {
+      processed.roshan += damage;
     } else {
       processed.other[source] = damage;
     }
@@ -371,8 +388,9 @@ function processCombatAnalysis(player) {
 
   if (player.ability_uses) {
     Object.entries(player.ability_uses).forEach(([ability, uses]) => {
-      if (!analysis[ability]) analysis[ability] = {};
-      analysis[ability].uses = uses;
+      const abilityName = ability === "null" ? "auto_attack" : ability;
+      if (!analysis[abilityName]) analysis[abilityName] = {};
+      analysis[abilityName].uses = uses;
     });
   }
 
@@ -385,7 +403,8 @@ function processCombatAnalysis(player) {
 
   if (player.ability_targets) {
     Object.entries(player.ability_targets).forEach(([ability, targets]) => {
-      if (!analysis[ability]) analysis[ability] = {};
+      const abilityName = ability === "null" ? "auto_attack" : ability;
+      if (!analysis[abilityName]) analysis[abilityName] = {};
       const processedTargets = {};
       Object.entries(targets).forEach(([target, count]) => {
         if (target.startsWith("npc_dota_hero_")) {
@@ -396,13 +415,14 @@ function processCombatAnalysis(player) {
           processedTargets[target] = count;
         }
       });
-      analysis[ability].targets = processedTargets;
+      analysis[abilityName].targets = processedTargets;
     });
   }
 
   if (player.damage_targets) {
     Object.entries(player.damage_targets).forEach(([ability, targets]) => {
-      if (!analysis[ability]) analysis[ability] = {};
+      const abilityName = ability === "null" ? "auto_attack" : ability;
+      if (!analysis[abilityName]) analysis[abilityName] = {};
       const processedDamage = {};
       Object.entries(targets).forEach(([target, damage]) => {
         if (target.startsWith("npc_dota_hero_")) {
@@ -413,14 +433,15 @@ function processCombatAnalysis(player) {
           processedDamage[target] = damage;
         }
       });
-      analysis[ability].damage = processedDamage;
+      analysis[abilityName].damage = processedDamage;
     });
   }
 
   if (player.hero_hits) {
     Object.entries(player.hero_hits).forEach(([ability, hits]) => {
-      if (!analysis[ability]) analysis[ability] = {};
-      analysis[ability].hits = hits;
+      const abilityName = ability === "null" ? "auto_attack" : ability;
+      if (!analysis[abilityName]) analysis[abilityName] = {};
+      analysis[abilityName].hits = hits;
     });
   }
 
@@ -608,6 +629,89 @@ function getRankName(rankTier) {
   return `${DotaConstants.rankTiers[tier]} ${subTier}`;
 }
 
+function processTeamfights(match, focusPlayerId) {
+  if (!match.teamfights || match.teamfights.length === 0) {
+    return [];
+  }
+
+  return match.teamfights.map((teamfight) => {
+    const radiantStats = {
+      deaths: 0,
+      deathHeroes: [],
+      buybacks: 0,
+      damage: 0,
+      healing: 0,
+      goldDelta: 0,
+      xpDelta: 0,
+    };
+
+    const direStats = {
+      deaths: 0,
+      deathHeroes: [],
+      buybacks: 0,
+      damage: 0,
+      healing: 0,
+      goldDelta: 0,
+      xpDelta: 0,
+    };
+
+    let focusPlayerStats = null;
+
+    teamfight.players.forEach((playerTF, index) => {
+      const player = match.players[index];
+      const isRadiant = player.team_number === 0;
+      const teamStats = isRadiant ? radiantStats : direStats;
+      const heroName = DotaConstants.heroes[player.hero_id]?.name || "Unknown";
+
+      const playerDeaths = playerTF.deaths || 0;
+      teamStats.deaths += playerDeaths;
+      if (playerDeaths > 0) {
+        for (let i = 0; i < playerDeaths; i++) {
+          teamStats.deathHeroes.push(heroName);
+        }
+      }
+
+      teamStats.buybacks += playerTF.buybacks || 0;
+      teamStats.damage += playerTF.damage || 0;
+      teamStats.healing += playerTF.healing || 0;
+      teamStats.goldDelta += playerTF.gold_delta || 0;
+      teamStats.xpDelta += playerTF.xp_delta || 0;
+
+      if (player.account_id === focusPlayerId) {
+        const killedHeroes = playerTF.killed
+          ? Object.keys(playerTF.killed).map((heroKey) => {
+              const hero = Object.values(DotaConstants.heroes).find(
+                (h) => h.raw_name === heroKey,
+              );
+              return hero?.name || heroKey;
+            })
+          : [];
+
+        focusPlayerStats = {
+          deaths: playerTF.deaths || 0,
+          kills: killedHeroes.length,
+          killedHeroes,
+          damage: playerTF.damage || 0,
+          healing: playerTF.healing || 0,
+          goldDelta: playerTF.gold_delta || 0,
+          xpDelta: playerTF.xp_delta || 0,
+          buyback: (playerTF.buybacks || 0) > 0,
+          abilityUses: playerTF.ability_uses || {},
+          itemUses: playerTF.item_uses || {},
+        };
+      }
+    });
+
+    return {
+      start: teamfight.start,
+      end: teamfight.end,
+      radiant: radiantStats,
+      dire: direStats,
+      focusPlayerStats,
+    };
+  });
+}
+
 async function analyzeMatch(match, meta, playerId, playerName) {
   const prompt = [
     { role: "system", content: SYSTEM_PROMPT.trim() },
@@ -666,6 +770,16 @@ DAMAGE ANALYSIS
 - Suggest itemization based on damage sources (BKB for magical, armor for physical).
 - Identify unused or underused abilities/items that could improve performance.
 
+TEAMFIGHT ANALYSIS
+- Use teamfights data to evaluate the player's performance in major engagements.
+- Compare focus player's damage/healing contribution to team totals for each teamfight.
+- Analyze teamfight timing: early game skirmishes vs late game decisive fights.
+- Evaluate ability and item usage during teamfights for effectiveness and timing.
+- Consider team composition and role when assessing teamfight performance.
+- Look for patterns: does the player perform better in winning or losing teamfights?
+- Assess economic impact: gold/XP deltas relative to deaths and team performance.
+- Note buyback usage and timing in relation to teamfight outcomes.
+
 STRENGTHS & WEAKNESSES
 - List only meaningful contributions that stand out for the role.
 - Do not include trivial or unimpressive contributions (e.g., 1-2 stacks, minimal dewards).
@@ -678,6 +792,7 @@ ITEMIZATION
 - Consider item progression when analyzing usage - component items upgrade into complete items.
 - Do not criticize low usage of component items that were likely upgraded (e.g., Pavise into Solar Crest).
 - Focus analysis on final items and their intended purpose throughout the game.
+- Consider purchase timing when analyzing item usage - items bought late in the game naturally have fewer usage opportunities.
 
 MAP & GAMEPLAY PHASES
 - Recommendations must align with actual Dota gameplay phases.
