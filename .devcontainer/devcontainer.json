@@ -1,19 +1,16 @@
 {
-    "name": "c0rbot",
-    "build": {
-        "dockerfile": "Dockerfile"
-    },
-    "customizations": {
-        "vscode": {
-            "extensions": [
-                "dbaeumer.vscode-eslint",
-                "esbenp.prettier-vscode"
-            ]
-        }
-    },
-    "postCreateCommand": "yarn install",
-    "remoteUser": "node",
-    "mounts": [
-        "source=${env:HOME}${env:USERPROFILE}/.aws,target=/home/node/.aws,type=bind"
-    ]
+  "name": "c0rbot",
+  "build": {
+    "dockerfile": "Dockerfile"
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": ["dbaeumer.vscode-eslint", "esbenp.prettier-vscode"]
+    }
+  },
+  "postCreateCommand": "yarn install",
+  "remoteUser": "node",
+  "mounts": [
+    "source=${env:HOME}${env:USERPROFILE}/.aws,target=/home/node/.aws,type=bind"
+  ]
 }

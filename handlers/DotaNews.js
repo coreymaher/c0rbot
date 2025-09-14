@@ -25,12 +25,12 @@ module.exports.handler = async () => {
       headers: {
         Accept: "application/json",
       },
-    }
+    },
   );
 
   const data = JSON.parse(raw_data);
   const event = data.events.find((event) =>
-    [12, 14].includes(event.event_type)
+    [12, 14].includes(event.event_type),
   );
 
   if (!event) return;

@@ -23,14 +23,14 @@ export async function verifyDiscordRequest({ rawBody, headers }) {
     publicKey,
     { name: "Ed25519" },
     false,
-    ["verify"]
+    ["verify"],
   );
 
   return await crypto.subtle.verify(
     { name: "Ed25519" },
     cryptoKey,
     signature,
-    message
+    message,
   );
 }
 
@@ -75,15 +75,27 @@ export async function handler(event) {
     });
   }
 
-  // Parse custom_id: ai:<match_id>:<player_id>
+  // Parse custom_id: ai:<match_id>:<player_id> or reanalyze:<match_id>:<player_id>
   const parts = interaction.data.custom_id.split(":");
-  if (parts.length !== 3 || parts[0] !== "ai") {
+  if (parts.length !== 3 || (parts[0] !== "ai" && parts[0] !== "reanalyze")) {
     return makeResponse({
       type: 4,
       data: { flags: 64, content: "Malformed action. Try again." },
     });
   }
-  const [_, matchId, playerId] = parts;
+  const [action, matchId, playerId] = parts;
+  const isReanalyze = action === "reanalyze";
+  const userId = interaction.member?.user?.id || interaction.user?.id;
+
+  if (isReanalyze && userId !== environment.discord.adminUserId) {
+    return makeResponse({
+      type: 4,
+      data: {
+        flags: 64,
+        content: "You don't have permission to reanalyze matches.",
+      },
+    });
+  }
 
   await lambda
     .invoke({
@@ -95,9 +107,10 @@ export async function handler(event) {
         guild_id: interaction.guild_id,
         channel_id: interaction.channel_id,
         message_id: interaction.message?.id,
-        user_id: interaction.member?.user?.id || interaction.user?.id,
+        user_id: userId,
         match_id: matchId,
         player_id: playerId,
+        skip_cache: isReanalyze,
       }),
     })
     .promise();
@@ -106,7 +119,7 @@ export async function handler(event) {
     type: 5,
     data: {
       flags: 64,
-      content: "Analyzing match...",
+      content: isReanalyze ? "Reanalyzing match..." : "Analyzing match...",
     },
   });
 }

@@ -89,8 +89,7 @@ function buildEmbed({ name, kills, result, type }) {
     },
     description: `${name} finished top ${result} in a ${type} Fortnite match with ${kills} kills`,
     thumbnail: {
-      url:
-        "https://ih0.redbubble.net/image.505938377.2392/flat,1000x1000,075,f.u5.jpg",
+      url: "https://ih0.redbubble.net/image.505938377.2392/flat,1000x1000,075,f.u5.jpg",
     },
   };
 }
@@ -124,7 +123,7 @@ function sendDiscordMessage(data) {
                   kills: user.newStats[type].kills - user.stats[type].kills,
                   result,
                   type,
-                })
+                }),
               );
             }
           });

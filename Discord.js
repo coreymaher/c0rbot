@@ -41,7 +41,7 @@ module.exports = function () {
         },
         function (err, response, body) {
           resolve();
-        }
+        },
       );
     });
   }
@@ -88,7 +88,7 @@ module.exports = function () {
           }
 
           resolve({ error: hadError });
-        }
+        },
       );
     });
   }
@@ -97,7 +97,7 @@ module.exports = function () {
     applicationID,
     interactionToken,
     payload,
-    update = true
+    update = true,
   ) {
     const baseUrl = `https://discord.com/api/v10/webhooks/${applicationID}/${interactionToken}`;
     const url = update ? `${baseUrl}/messages/@original` : baseUrl;

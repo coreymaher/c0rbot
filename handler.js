@@ -72,7 +72,7 @@ module.exports.redditFeed = (event, context, callback) => {
   const key = "reddit-dota-update";
   const dbPromise = loadFeedData(key);
   const rssPromise = simpleGet(
-    "https://www.reddit.com/r/dota2/new/.rss?sort=new"
+    "https://www.reddit.com/r/dota2/new/.rss?sort=new",
   );
 
   Promise.all([dbPromise, rssPromise])
@@ -109,8 +109,7 @@ module.exports.redditFeed = (event, context, callback) => {
               description: title,
               url: link.attr("href"),
               thumbnail: {
-                url:
-                  "https://b.thumbs.redditmedia.com/F82n9T2HtoYxNmxbe1CL0RKxBdeUEw-HVyd-F-Lb91o.png",
+                url: "https://b.thumbs.redditmedia.com/F82n9T2HtoYxNmxbe1CL0RKxBdeUEw-HVyd-F-Lb91o.png",
               },
             };
             const discordPromise = discord.sendEmbed(embed, "updates");
@@ -159,8 +158,7 @@ module.exports.dotaBlog = (event, context, callback) => {
             description: title,
             url: link,
             thumbnail: {
-              url:
-                "http://vignette3.wikia.nocookie.net/defenseoftheancients/images/6/64/Dota_2_Logo_only.png/revision/latest",
+              url: "http://vignette3.wikia.nocookie.net/defenseoftheancients/images/6/64/Dota_2_Logo_only.png/revision/latest",
             },
           };
           const discordPromise = discord.sendEmbed(embed, "updates");
@@ -245,7 +243,7 @@ module.exports.twitchStreams = (event, context, callback) => {
     const key = `twitch-${channel}`;
     const dbPromise = loadFeedData(key);
     const requestPromise = simpleGet(
-      `https://api.twitch.tv/kraken/streams/${channel}?client_id=${environment.twitch.apikey}`
+      `https://api.twitch.tv/kraken/streams/${channel}?client_id=${environment.twitch.apikey}`,
     );
 
     Promise.all([dbPromise, requestPromise]).then((values) => {
@@ -282,7 +280,7 @@ module.exports.twitchStreams = (event, context, callback) => {
 module.exports.arkChangelog = (event, context, callback) => {
   const dbPromise = loadFeedData("ark-changelog");
   const requestPromise = simpleGet(
-    "https://survivetheark.com/index.php?/forums/forum/5-changelog-patch-notes/"
+    "https://survivetheark.com/index.php?/forums/forum/5-changelog-patch-notes/",
   );
 
   function parseVersion(content) {
@@ -314,7 +312,7 @@ module.exports.arkChangelog = (event, context, callback) => {
             "Current Version: " +
               version.version +
               "\\s*\\n\\s*([^]*?)v[\\d.]+\\n",
-            "im"
+            "im",
           ).exec(content);
 
           if (matches.length) {
@@ -324,15 +322,14 @@ module.exports.arkChangelog = (event, context, callback) => {
               description: version.version,
               url: version.url,
               thumbnail: {
-                url:
-                  "https://pbs.twimg.com/profile_images/749126245372334080/iIfI182O_400x400.jpg",
+                url: "https://pbs.twimg.com/profile_images/749126245372334080/iIfI182O_400x400.jpg",
               },
               fields: [{ name: "Changes", value: changes }],
             };
             const discordPromise = discord.sendEmbed(embed, "updates");
             const writePromise = updateFeedData(
               "ark-changelog",
-              version.version
+              version.version,
             );
 
             return Promise.all([discordPromise, writePromise]);
@@ -387,8 +384,7 @@ module.exports.dotaUpdates = (event, context, callback) => {
             description: latestLink.text(),
             url: url,
             thumbnail: {
-              url:
-                "http://vignette3.wikia.nocookie.net/defenseoftheancients/images/6/64/Dota_2_Logo_only.png/revision/latest",
+              url: "http://vignette3.wikia.nocookie.net/defenseoftheancients/images/6/64/Dota_2_Logo_only.png/revision/latest",
             },
           };
           const discordPromise = discord.sendEmbed(embed, "updates");
@@ -479,7 +475,7 @@ module.exports.steamUpdates = (event, context, callback) => {
 module.exports.dontStarveChangelog = (event, context, callback) => {
   const dbPromise = loadFeedData("dont-starve-together_changelog");
   const requestPromise = simpleGet(
-    "http://forums.kleientertainment.com/game-updates/dst/?page=1"
+    "http://forums.kleientertainment.com/game-updates/dst/?page=1",
   );
 
   Promise.all([dbPromise, requestPromise])
@@ -511,14 +507,13 @@ module.exports.dontStarveChangelog = (event, context, callback) => {
             description: latestLink.text(),
             url: url,
             thumbnail: {
-              url:
-                "https://vignette.wikia.nocookie.net/dont-starve-game/images/9/90/Don%27t_Starve_Together_Logo.png",
+              url: "https://vignette.wikia.nocookie.net/dont-starve-game/images/9/90/Don%27t_Starve_Together_Logo.png",
             },
           };
           const discordPromise = discord.sendEmbed(embed, "updates");
           const writePromise = updateFeedData(
             "dont-starve-together_changelog",
-            url
+            url,
           );
 
           Promise.all([discordPromise, writePromise]).then(() => {
@@ -537,7 +532,7 @@ module.exports.dontStarveChangelog = (event, context, callback) => {
 module.exports.fortniteChangelog = (event, context, callback) => {
   const dbPromise = loadFeedData("fortnite_changelog");
   const requestPromise = simpleGet(
-    "https://www.epicgames.com/fortnite/en-US/news"
+    "https://www.epicgames.com/fortnite/en-US/news",
   );
 
   Promise.all([dbPromise, requestPromise])
@@ -550,7 +545,7 @@ module.exports.fortniteChangelog = (event, context, callback) => {
 
       const posts = [].concat(
         data.BlogStore.topFeatured,
-        data.BlogStore.blogList
+        data.BlogStore.blogList,
       );
 
       const changePost = posts.reduce((acc, post) => {
@@ -581,7 +576,7 @@ module.exports.fortniteChangelog = (event, context, callback) => {
             title: "There is a new Fortnite Update",
             description: `${changePost.title} - ${changePost.short.replace(
               /<[^>]+>/g,
-              ""
+              "",
             )}`,
             url: `https://www.epicgames.com/fortnite${url}`,
             thumbnail: {
@@ -591,7 +586,7 @@ module.exports.fortniteChangelog = (event, context, callback) => {
           const discordPromise = discord.sendEmbed(embed, "updates");
           const writePromise = updateFeedData(
             "fortnite_changelog",
-            changePost["_id"]
+            changePost["_id"],
           );
 
           return Promise.all([discordPromise, writePromise]).then(() => {
@@ -631,12 +626,12 @@ module.exports.underlordsChangelog = (event, context, callback) => {
 
     try {
       const [, /*ignore*/ month, day, year] = /^(\S+) (\d+)[^,]+, (\d+)$/.exec(
-        str
+        str,
       );
 
       result = `${year.padStart(4, "0")}${months[month].padStart(
         2,
-        "0"
+        "0",
       )}${day.padStart(2, "0")}`;
     } catch (e) {}
 

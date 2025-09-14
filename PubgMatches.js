@@ -83,7 +83,7 @@ function loadMatches(data) {
       }
 
       const matchTimestamp = Math.floor(
-        new Date(match.data.attributes.createdAt).getTime() / 1000
+        new Date(match.data.attributes.createdAt).getTime() / 1000,
       );
 
       const messages = [];
@@ -109,7 +109,7 @@ function loadMatches(data) {
                 obj.attributes.stats.winPlace == 100
               ) {
                 messages.push(
-                  buildEmbed(obj.attributes.stats.winPlace, obj, match.data)
+                  buildEmbed(obj.attributes.stats.winPlace, obj, match.data),
                 );
               }
             }
@@ -144,7 +144,7 @@ function buildEmbed(place, player, match) {
     description = `${name} just threw a ${type} PUBG match`;
   } else {
     description = `${name} just finished ${ordinal(
-      place
+      place,
     )} in a ${type} PUBG match`;
   }
 
@@ -175,7 +175,7 @@ function buildEmbed(place, player, match) {
       {
         name: "time",
         value: `${Math.round(
-          player.attributes.stats.timeSurvived / 60
+          player.attributes.stats.timeSurvived / 60,
         )} minutes`,
         inline: true,
       },
@@ -187,8 +187,7 @@ function buildEmbed(place, player, match) {
       { name: "map", value: map, inline: true },
     ],
     thumbnail: {
-      url:
-        "https://theme.zdassets.com/theme_assets/2042105/d3974a8e44860e0e05c0508c5a51f4be724a3439.png",
+      url: "https://theme.zdassets.com/theme_assets/2042105/d3974a8e44860e0e05c0508c5a51f4be724a3439.png",
     },
   };
 }

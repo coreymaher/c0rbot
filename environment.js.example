@@ -6,6 +6,7 @@ const environment = {
     userAgent: "USER_AGENT_HERE",
     apikey: "API_KEY_HERE",
     publicKey: "PUBLIC_KEY_HERE",
+    adminUserId: "YOUR_DISCORD_USER_ID_HERE",
   },
   dota: {
     apikey: "API_KEY_HERE",

@@ -14,7 +14,7 @@ module.exports.handler = async () => {
   const feed_name = "no-mans-sky_patches";
   const db = await utils.loadFeedData(feed_name);
   const content = await utils.simpleGet(
-    "https://www.nomanssky.com/release-log/"
+    "https://www.nomanssky.com/release-log/",
   );
 
   const $ = cheerio.load(content);

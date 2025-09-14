@@ -151,14 +151,14 @@ export async function handler() {
 
   for (const user of users) {
     console.log(
-      `Loading the latest matches for: ${user.name} (${user.player_id})`
+      `Loading the latest matches for: ${user.name} (${user.player_id})`,
     );
 
     const content = await simpleGet(
       `https://api.deadlock-api.com/v1/players/${user.player_id}/match-history`,
       {
         timeout: 5000,
-      }
+      },
     );
 
     if (!content) {
@@ -168,7 +168,7 @@ export async function handler() {
 
     const data = JSON.parse(content);
     const seenIndex = data.findIndex(
-      (match) => match.match_id == user.last_match_id
+      (match) => match.match_id == user.last_match_id,
     );
     if (seenIndex === -1) {
       seenIndex = data.length;
@@ -182,7 +182,7 @@ export async function handler() {
       data
         .slice(0, seenIndex)
         .reverse()
-        .map(async (match) => await handleMatch(match, user))
+        .map(async (match) => await handleMatch(match, user)),
     );
     const successful = results.some(({ error }) => !error);
 

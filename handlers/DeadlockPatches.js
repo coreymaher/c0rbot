@@ -15,7 +15,7 @@ module.exports.handler = async () => {
   const db = await utils.loadFeedData(feed_name);
 
   const content = await utils.simpleGet(
-    "https://forums.playdeadlock.com/forums/changelog.10/index.rss"
+    "https://forums.playdeadlock.com/forums/changelog.10/index.rss",
   );
   const $ = cheerio.load(content, { xmlMode: true });
 

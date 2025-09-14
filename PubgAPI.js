@@ -36,13 +36,13 @@ module.exports = function (options) {
 
   function getPlayer(id) {
     return getRequest(
-      `https://api.playbattlegrounds.com/shards/pc-na/players/${id}`
+      `https://api.playbattlegrounds.com/shards/pc-na/players/${id}`,
     );
   }
 
   function getMatch(id) {
     return getRequest(
-      `https://api.playbattlegrounds.com/shards/pc-na/matches/${id}`
+      `https://api.playbattlegrounds.com/shards/pc-na/matches/${id}`,
     );
   }
 

@@ -29,7 +29,7 @@ module.exports = function (options) {
       {
         account_id: steamID,
         matches_requested: 1,
-      }
+      },
     );
   }
 
@@ -38,7 +38,7 @@ module.exports = function (options) {
       "http://api.steampowered.com/ISteamUser/GetPlayerSummaries/v0002/",
       {
         steamids: accountIDs.join(","),
-      }
+      },
     );
   }
 
@@ -47,7 +47,7 @@ module.exports = function (options) {
       "http://api.steampowered.com/IDOTA2Match_570/GetMatchDetails/V001/",
       {
         match_id: matchID,
-      }
+      },
     );
   }
 
@@ -71,7 +71,7 @@ module.exports = function (options) {
                 min_players: 10,
                 hero_id: heroID,
                 matches_requested: 1,
-              }
+              },
             ).then((result) => {
               if (
                 result.result.num_results &&
