@@ -713,17 +713,21 @@ function processTeamfights(match, focusPlayerId) {
 }
 
 async function analyzeMatch(match, meta, playerId, playerName) {
-  const prompt = [
-    { role: "system", content: SYSTEM_PROMPT.trim() },
-    {
-      role: "user",
-      content: USER_PROMPT.trim()
-        .replace("{{PLAYER_ID}}", playerId)
-        .replace("{{PLAYER_NAME}}", playerName)
-        .replace("{{META_HEROES}}", JSON.stringify(meta.heroes))
-        .replace("{{MATCH_JSON}}", JSON.stringify(match)),
-    },
-  ];
+  const prompt = [{ role: "system", content: SYSTEM_PROMPT.trim() }];
+
+  // Add Turbo-specific rules only for Turbo games
+  if (match.gameMode === "Turbo") {
+    prompt.push({ role: "system", content: TURBO_ADDENDUM.trim() });
+  }
+
+  prompt.push({
+    role: "user",
+    content: USER_PROMPT.trim()
+      .replace("{{PLAYER_ID}}", playerId)
+      .replace("{{PLAYER_NAME}}", playerName)
+      .replace("{{META_HEROES}}", JSON.stringify(meta.heroes))
+      .replace("{{MATCH_JSON}}", JSON.stringify(match)),
+  });
 
   const response = await OpenAI.chatCompletions(prompt, "gpt-5");
 
@@ -798,13 +802,6 @@ MAP & GAMEPLAY PHASES
 - Recommendations must align with actual Dota gameplay phases.
 - Avoid vague or inapplicable concepts (e.g., "play high ground" during lane phase).
 
-GAME MODE AWARENESS
-- Always read and account for the game mode from the supplied JSON.
-- In Turbo matches, economy and pacing stats (GPM, XPM, kills) are inflated by design.
-- Do not call GPM/XPM/kill rates "high/low" in Turbo unless explicitly relative to this match
-  (e.g., versus team averages, the lane opponent, or enemy cores).
-- Phrase such evaluations with qualifiers like "for this Turbo match" or "relative to peers."
-
 META HEROES
 - Use only if relevant to the player's hero/role (e.g., draft fit, counters, or alternative picks).
 
@@ -855,6 +852,12 @@ SCHEMA
   "weaknesses": string[],
   "recommendations": string[],
 }
+`;
+
+const TURBO_ADDENDUM = `
+TURBO MODE ADDENDUM
+- This match is Turbo. Economy and pacing stats (GPM, XPM, kills) are inflated by design.
+- Do not call GPM/XPM/kill rates "high/low" unless explicitly relative to this match (team averages, lane opponent, enemy heroes).
 `;
 
 const USER_PROMPT = `
