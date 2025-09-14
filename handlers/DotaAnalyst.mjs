@@ -15,18 +15,46 @@ const discord = new Discord();
 discord.init(environment.discord);
 
 export async function handler(event) {
-  const { application_id, interaction_token, match_id, player_id } = event;
+  const {
+    application_id,
+    interaction_token,
+    match_id,
+    player_id,
+    skip_cache,
+    user_id,
+  } = event;
 
   try {
     const cacheKey = `match:${match_id}:player:${player_id}`;
-    const cachedAnalysis = await cache.get(cacheNamespace, cacheKey);
-    if (cachedAnalysis) {
-      await discord.sendInteractionResponse(
-        application_id,
-        interaction_token,
-        JSON.parse(cachedAnalysis)
-      );
-      return;
+    if (!skip_cache) {
+      const cachedAnalysis = await cache.get(cacheNamespace, cacheKey);
+      if (cachedAnalysis) {
+        const payload = JSON.parse(cachedAnalysis);
+
+        // Add reanalyze button to cached response if user is admin
+        if (user_id === environment.discord.adminUserId) {
+          payload.components = [
+            {
+              type: 1,
+              components: [
+                {
+                  type: 2,
+                  style: 2,
+                  label: "Reanalyze",
+                  custom_id: `reanalyze:${match_id}:${player_id}`,
+                },
+              ],
+            },
+          ];
+        }
+
+        await discord.sendInteractionResponse(
+          application_id,
+          interaction_token,
+          payload,
+        );
+        return;
+      }
     }
 
     await discord.sendInteractionResponse(
@@ -37,7 +65,7 @@ export async function handler(event) {
         content: "Loading match...",
         allowed_mentions: { parse: [] },
       },
-      true
+      true,
     );
     const fullMatch = await OpenDotaAPI.getMatch(match_id);
     if (!fullMatch.od_data.has_parsed) {
@@ -56,7 +84,7 @@ export async function handler(event) {
     const meta = await loadMeta();
 
     const player = fullMatch.players.find(
-      (player) => player.account_id === Number(player_id)
+      (player) => player.account_id === Number(player_id),
     );
     const playerHero = DotaConstants.heroes[player.hero_id].name;
     const playerName = player.personaname;
@@ -69,14 +97,14 @@ export async function handler(event) {
         content: "Analyzing match...",
         allowed_mentions: { parse: [] },
       },
-      true
+      true,
     );
 
     const analysis = await analyzeMatch(
       match,
       meta,
       Number(player_id),
-      playerName
+      playerName,
     );
 
     const analysisPayload = {
@@ -107,10 +135,26 @@ export async function handler(event) {
       allowed_mentions: { parse: [] },
     };
 
+    if (user_id === environment.discord.adminUserId) {
+      analysisPayload.components = [
+        {
+          type: 1,
+          components: [
+            {
+              type: 2,
+              style: 2,
+              label: "Reanalyze",
+              custom_id: `reanalyze:${match_id}:${player_id}`,
+            },
+          ],
+        },
+      ];
+    }
+
     await discord.sendInteractionResponse(
       application_id,
       interaction_token,
-      analysisPayload
+      analysisPayload,
     );
 
     await cache.set(cacheNamespace, cacheKey, JSON.stringify(analysisPayload));
@@ -228,6 +272,7 @@ function preparePlayers(match, focusPlayerId) {
       heroDamage: player.hero_damage,
       towerDamage: player.tower_damage,
       heroHealing: player.hero_healing,
+      damageTaken: processDamageTaken(player.damage_taken),
       level: player.level,
       rank: getRankName(player.rank_tier),
       runesPickedUp: player.rune_pickups,
@@ -263,9 +308,11 @@ function preparePlayers(match, focusPlayerId) {
       courierKills: player.courier_kills,
       neutralItems: player.neutral_item_history,
       campsStacked: player.camps_stacked,
+      combatAnalysis: processCombatAnalysis(player),
       chat: match.chat
         .filter(
-          (msg) => msg.player_slot === player.player_slot && msg.type === "chat"
+          (msg) =>
+            msg.player_slot === player.player_slot && msg.type === "chat",
         )
         .map((msg) => ({ time: msg.time, message: msg.key })),
       ...(!isTurbo
@@ -275,7 +322,7 @@ function preparePlayers(match, focusPlayerId) {
                 acc[name] = (benchmark.pct * 100).toFixed(2);
                 return acc;
               },
-              {}
+              {},
             ),
           }
         : {}),
@@ -285,8 +332,99 @@ function preparePlayers(match, focusPlayerId) {
 
 function heroByRaw(raw) {
   return Object.values(DotaConstants.heroes).find(
-    (hero) => hero.raw_name === raw
+    (hero) => hero.raw_name === raw,
   );
+}
+
+function processDamageTaken(damageTaken) {
+  if (!damageTaken) return {};
+
+  const processed = {
+    heroes: {},
+    towers: 0,
+    creeps: 0,
+    neutrals: 0,
+    other: {},
+  };
+
+  Object.entries(damageTaken).forEach(([source, damage]) => {
+    if (source.startsWith("npc_dota_hero_")) {
+      const hero = heroByRaw(source);
+      const heroName = hero ? hero.name : source;
+      processed.heroes[heroName] = damage;
+    } else if (source.startsWith("npc_dota_tower_")) {
+      processed.towers += damage;
+    } else if (source.startsWith("npc_dota_creep_")) {
+      processed.creeps += damage;
+    } else if (source.startsWith("npc_dota_neutral_")) {
+      processed.neutrals += damage;
+    } else {
+      processed.other[source] = damage;
+    }
+  });
+
+  return processed;
+}
+
+function processCombatAnalysis(player) {
+  const analysis = {};
+
+  if (player.ability_uses) {
+    Object.entries(player.ability_uses).forEach(([ability, uses]) => {
+      if (!analysis[ability]) analysis[ability] = {};
+      analysis[ability].uses = uses;
+    });
+  }
+
+  if (player.item_uses) {
+    Object.entries(player.item_uses).forEach(([item, uses]) => {
+      if (!analysis[item]) analysis[item] = {};
+      analysis[item].uses = uses;
+    });
+  }
+
+  if (player.ability_targets) {
+    Object.entries(player.ability_targets).forEach(([ability, targets]) => {
+      if (!analysis[ability]) analysis[ability] = {};
+      const processedTargets = {};
+      Object.entries(targets).forEach(([target, count]) => {
+        if (target.startsWith("npc_dota_hero_")) {
+          const hero = heroByRaw(target);
+          const heroName = hero ? hero.name : target;
+          processedTargets[heroName] = count;
+        } else {
+          processedTargets[target] = count;
+        }
+      });
+      analysis[ability].targets = processedTargets;
+    });
+  }
+
+  if (player.damage_targets) {
+    Object.entries(player.damage_targets).forEach(([ability, targets]) => {
+      if (!analysis[ability]) analysis[ability] = {};
+      const processedDamage = {};
+      Object.entries(targets).forEach(([target, damage]) => {
+        if (target.startsWith("npc_dota_hero_")) {
+          const hero = heroByRaw(target);
+          const heroName = hero ? hero.name : target;
+          processedDamage[heroName] = damage;
+        } else {
+          processedDamage[target] = damage;
+        }
+      });
+      analysis[ability].damage = processedDamage;
+    });
+  }
+
+  if (player.hero_hits) {
+    Object.entries(player.hero_hits).forEach(([ability, hits]) => {
+      if (!analysis[ability]) analysis[ability] = {};
+      analysis[ability].hits = hits;
+    });
+  }
+
+  return analysis;
 }
 
 function buildVisionEventList(player) {
@@ -298,6 +436,8 @@ function buildVisionEventList(player) {
       id: event.ehandle,
       type: "observer",
       placed: event.time,
+      x: event.x,
+      y: event.y,
       removed: null,
       reason: "expire",
       removedBy: null,
@@ -309,6 +449,8 @@ function buildVisionEventList(player) {
       id: event.ehandle,
       type: "sentry",
       placed: event.time,
+      x: event.x,
+      y: event.y,
       removed: null,
       reason: "expire",
       removedBy: null,
@@ -317,7 +459,7 @@ function buildVisionEventList(player) {
 
   for (const event of player.obs_left_log) {
     const placeEvent = events.find(
-      (ev) => ev.type === "observer" && ev.id === event.ehandle
+      (ev) => ev.type === "observer" && ev.id === event.ehandle,
     );
     if (!placeEvent) continue;
 
@@ -333,7 +475,7 @@ function buildVisionEventList(player) {
 
   for (const event of player.sen_left_log) {
     const placeEvent = events.find(
-      (ev) => ev.type === "sentry" && ev.id === event.ehandle
+      (ev) => ev.type === "sentry" && ev.id === event.ehandle,
     );
     if (!placeEvent) continue;
 
@@ -436,7 +578,7 @@ function prepareLog(match) {
     const hero = DotaConstants.heroes[player.hero_id];
     for (const message of player.kills_log) {
       const victim = Object.values(DotaConstants.heroes).find(
-        (h) => h.raw_name === message.key
+        (h) => h.raw_name === message.key,
       );
       messages.push({
         time: message.time,
@@ -510,6 +652,20 @@ ROLE AWARENESS
 - Do not penalize supports for low tower or hero damage, or cores for low warding.
 - Frame strengths/weaknesses/recommendations according to role expectations.
 
+VISION & WARDING
+- Use ward position data (x, y coordinates) to identify patterns like repeated ward spots.
+- Comment on ward diversity if positions show clustering in same areas (poor coverage).
+- Focus on ward timing relative to objectives or game phases when relevant.
+- Do not list raw ward counts unless they are impactful relative to role or peers.
+- Never include specific coordinate values (x, y positions) in your output.
+
+DAMAGE ANALYSIS
+- Use damageTaken breakdown to identify survivability issues and positioning problems.
+- Analyze combatAnalysis for ability/item usage efficiency and target prioritization.
+- Compare uses vs hits vs damage to assess accuracy and effectiveness.
+- Suggest itemization based on damage sources (BKB for magical, armor for physical).
+- Identify unused or underused abilities/items that could improve performance.
+
 STRENGTHS & WEAKNESSES
 - List only meaningful contributions that stand out for the role.
 - Do not include trivial or unimpressive contributions (e.g., 1-2 stacks, minimal dewards).
@@ -519,6 +675,9 @@ STRENGTHS & WEAKNESSES
 ITEMIZATION
 - When referencing items, describe their timing or impact relative to the player's role.
 - Do not list items without analysis of how they affected survivability, impact, or team outcomes.
+- Consider item progression when analyzing usage - component items upgrade into complete items.
+- Do not criticize low usage of component items that were likely upgraded (e.g., Pavise into Solar Crest).
+- Focus analysis on final items and their intended purpose throughout the game.
 
 MAP & GAMEPLAY PHASES
 - Recommendations must align with actual Dota gameplay phases.
