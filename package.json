@@ -17,7 +17,10 @@
     "prettier": "^3.6.2",
     "serverless": "^3.28.1"
   },
-  "scripts": {},
+  "scripts": {
+    "decrypt": "sops -d environment.js.enc > environment.js",
+    "deploy": "npm run decrypt && serverless deploy"
+  },
   "author": "",
   "license": "ISC"
 }

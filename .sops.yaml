@@ -1,0 +1,4 @@
+creation_rules:
+  - path_regex: environment\.js$
+    kms: arn:aws:kms:us-east-1:234211541083:key/615c886d-da71-4dc2-b17e-9c83e4102fbf
+    aws_profile: c0rbot-admin
