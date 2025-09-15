@@ -8,6 +8,8 @@ import DotaConstants from "../DotaConstants.js";
 import items from "dotaconstants/build/items.json" with { type: "json" };
 
 const cacheNamespace = "dota-ai-analyzer";
+const metaCacheNamespace = "dota-meta";
+const ONE_DAY = 24 * 60 * 60;
 
 const environment = JSON.parse(process.env.environment);
 
@@ -208,6 +210,13 @@ export async function handler(event) {
 }
 
 async function loadMeta() {
+  const cacheKey = "heroes-meta";
+
+  const cachedMeta = await cache.get(metaCacheNamespace, cacheKey);
+  if (cachedMeta) {
+    return JSON.parse(cachedMeta);
+  }
+
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 5000);
 
@@ -244,9 +253,13 @@ async function loadMeta() {
       .map(([heroId]) => DotaConstants.heroes[Number(heroId)].name ?? "Unknown")
       .filter(Boolean);
 
-    return {
+    const metaData = {
       heroes: sortedHeroes,
     };
+
+    await cache.set(metaCacheNamespace, cacheKey, JSON.stringify(metaData), ONE_DAY);
+
+    return metaData;
   } catch (err) {
     console.error(`Failed to load meta information: ${err}`);
 
