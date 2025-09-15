@@ -11,6 +11,17 @@ const cacheNamespace = "dota-ai-analyzer";
 
 const environment = JSON.parse(process.env.environment);
 
+function createTimer(operationName) {
+  const start = Date.now();
+  console.log(`Starting ${operationName}...`);
+  return {
+    end: () => {
+      const duration = Date.now() - start;
+      console.log(`${operationName} completed: ${duration}ms`);
+    }
+  };
+}
+
 const discord = new Discord();
 discord.init(environment.discord);
 
@@ -27,7 +38,9 @@ export async function handler(event) {
   try {
     const cacheKey = `match:${match_id}:player:${player_id}`;
     if (!skip_cache) {
+      const cacheTimer = createTimer("cache lookup");
       const cachedAnalysis = await cache.get(cacheNamespace, cacheKey);
+      cacheTimer.end();
       if (cachedAnalysis) {
         const payload = JSON.parse(cachedAnalysis);
 
@@ -67,9 +80,13 @@ export async function handler(event) {
       },
       true,
     );
+    const matchTimer = createTimer("OpenDota match fetch");
     const fullMatch = await OpenDotaAPI.getMatch(match_id);
+    matchTimer.end();
     if (!fullMatch.od_data.has_parsed) {
+      const parseTimer = createTimer("OpenDota parse request");
       await OpenDotaAPI.requestParse(match_id);
+      parseTimer.end();
 
       await discord.sendInteractionResponse(application_id, interaction_token, {
         flags: 64,
@@ -80,8 +97,13 @@ export async function handler(event) {
       return;
     }
 
+    const compactTimer = createTimer("match data processing");
     const match = await generateCompactMatch(fullMatch, Number(player_id));
+    compactTimer.end();
+
+    const metaTimer = createTimer("meta data loading");
     const meta = await loadMeta();
+    metaTimer.end();
 
     const player = fullMatch.players.find(
       (player) => player.account_id === Number(player_id),
@@ -102,12 +124,14 @@ export async function handler(event) {
 
     console.log("Match payload for LLM:", JSON.stringify(match, null, 2));
 
+    const analysisTimer = createTimer("AI analysis");
     const analysis = await analyzeMatch(
       match,
       meta,
       Number(player_id),
       playerName,
     );
+    analysisTimer.end();
 
     const analysisPayload = {
       flags: 64,
@@ -159,7 +183,9 @@ export async function handler(event) {
       analysisPayload,
     );
 
+    const cacheSetTimer = createTimer("cache set");
     await cache.set(cacheNamespace, cacheKey, JSON.stringify(analysisPayload));
+    cacheSetTimer.end();
   } catch (err) {
     console.error("DotaAnalyst error:", err);
 
