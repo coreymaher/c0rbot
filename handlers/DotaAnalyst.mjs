@@ -124,12 +124,15 @@ export async function handler(event) {
       true,
     );
 
+    const matchHeroesMeta = getMatchHeroesMeta(match, meta.heroes);
+
     console.log("Match payload for LLM:", JSON.stringify(match, null, 2));
+    console.log("Meta heroes for LLM:", JSON.stringify(matchHeroesMeta, null, 2));
 
     const analysisTimer = createTimer("AI analysis");
     const analysis = await analyzeMatch(
       match,
-      meta,
+      matchHeroesMeta,
       Number(player_id),
       playerName,
     );
@@ -269,6 +272,17 @@ async function loadMeta() {
   } finally {
     clearTimeout(timeout);
   }
+}
+
+function getMatchHeroesMeta(match, allHeroesMeta) {
+  const matchHeroes = match.players.map(player => player.hero);
+  return matchHeroes.reduce((acc, hero) => {
+    const position = allHeroesMeta.indexOf(hero) + 1;
+    if (position > 0) {
+      acc[hero] = position;
+    }
+    return acc;
+  }, {});
 }
 
 async function generateCompactMatch(match, focusPlayerId) {
@@ -751,7 +765,7 @@ function processTeamfights(match, focusPlayerId) {
   });
 }
 
-async function analyzeMatch(match, meta, playerId, playerName) {
+async function analyzeMatch(match, matchHeroesMeta, playerId, playerName) {
   const prompt = [{ role: "system", content: SYSTEM_PROMPT.trim() }];
 
   // Add Turbo-specific rules only for Turbo games
@@ -764,7 +778,7 @@ async function analyzeMatch(match, meta, playerId, playerName) {
     content: USER_PROMPT.trim()
       .replace("{{PLAYER_ID}}", playerId)
       .replace("{{PLAYER_NAME}}", playerName)
-      .replace("{{META_HEROES}}", JSON.stringify(meta.heroes))
+      .replace("{{META_HEROES}}", JSON.stringify(matchHeroesMeta))
       .replace("{{MATCH_JSON}}", JSON.stringify(match)),
   });
 
@@ -861,7 +875,8 @@ PLAYER_NAME:
 {{PLAYER_NAME}}
 
 Meta Heroes:
-# Array of hero names sorted by recent high-MMR win/impact
+# Object mapping heroes in this match to their high-MMR meta ranking position (1 = strongest)
+# Format: {"Hero Name": 15, "Another Hero": 23}
 {{META_HEROES}}
 
 OpenDota Match Data:
