@@ -293,11 +293,11 @@ async function generateCompactMatch(match, focusPlayerId) {
     gameMode: DotaConstants.gameModes[match.game_mode],
     radiantKills: match.radiant_score,
     direKills: match.dire_score,
-    pick_bans: match.picks_bans.map((pick_ban) => ({
+    pick_bans: match.picks_bans?.map((pick_ban) => ({
       type: pick_ban.is_pick ? "pick" : "ban",
       hero: DotaConstants.heroes?.[pick_ban.hero_id]?.name || "Unknown",
       team: pick_ban.team === 0 ? "radiant" : "dire",
-    })),
+    })) || [],
     radiantGoldAdvantage: match.radiant_gold_adv,
     radiantXpAdvantage: match.radiant_xp_adv,
     players: preparePlayers(match, focusPlayerId),
