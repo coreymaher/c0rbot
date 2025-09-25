@@ -64,13 +64,29 @@ function loadConfig(data) {
 }
 
 function loadRecentMatches(data) {
+  console.log(`Checking matches for ${data.dbUsers.length} users`);
   const userPromises = data.dbUsers.map((user) => {
-    return OpenDotaAPI.getLatestMatch(user.steamID).then((matches) => {
-      const match = matches[0];
-      if (match && match.match_id != user.last_matchID) {
-        data.matches[match.match_id] = {};
+    return OpenDotaAPI.getRecentMatches(user.steamID).then((matches) => {
+      console.log(`User ${user.steamID}: got ${matches.length} recent matches, last notified ${user.last_matchID}`);
+
+      // Find new matches (match_id > last_matchID since IDs increment)
+      const newMatches = matches.filter(match => match.match_id > user.last_matchID);
+      console.log(`User ${user.steamID}: found ${newMatches.length} new matches`);
+
+      if (newMatches.length > 0) {
+        // Add matches to data.matches
+        newMatches.forEach(match => {
+          data.matches[match.match_id] = {};
+          console.log(`New match queued: ${match.match_id} for user ${user.steamID}`);
+        });
+
+        // Store user with array of new match IDs, sorted oldest to newest
+        const sortedMatchIDs = newMatches
+          .map(match => match.match_id)
+          .sort((a, b) => a - b); // Sort ascending (oldest first)
+
         data.users[user.steamID] = {
-          matchID: match.match_id,
+          matches: sortedMatchIDs
         };
       }
 
@@ -79,6 +95,7 @@ function loadRecentMatches(data) {
   });
 
   return Promise.all(userPromises).then(() => {
+    console.log(`Found ${Object.keys(data.matches).length} new matches to process`);
     return Promise.resolve(data);
   });
 }
@@ -122,14 +139,23 @@ function getGameMode(modeID, config) {
 }
 
 function sendDiscordMessage(data) {
-  const userPromises = Object.keys(data.users).map((userID) => {
-    const user = data.users[userID];
-    const matchID = user.matchID;
-    const match = data.matches[matchID];
+  const messagePromises = [];
+
+  Object.keys(data.users).forEach((steamID) => {
+    const user = data.users[steamID];
+
+    // Create a message promise for each match this user has
+    user.matches.forEach(matchID => {
+      const match = data.matches[matchID];
+      messagePromises.push(createDiscordMessageForMatch(steamID, user, matchID, match));
+    });
+  });
+
+  function createDiscordMessageForMatch(steamID, user, matchID, match) {
 
     const dotaPlayer = match.players.reduce((player, curPlayer) => {
       let result = player;
-      if (curPlayer.account_id == userID) {
+      if (curPlayer.account_id == steamID) {
         result = curPlayer;
       }
 
@@ -253,16 +279,16 @@ function sendDiscordMessage(data) {
             type: 2,
             style: 1,
             label: "Analyze",
-            custom_id: `ai:${matchID}:${userID}`,
+            custom_id: `ai:${matchID}:${steamID}`,
           },
         ],
       },
     ];
 
     return Promise.resolve({ embed, components });
-  });
+  }
 
-  return Promise.all(userPromises)
+  return Promise.all(messagePromises)
     .then((embeds) => {
       let promise = Promise.resolve();
 
@@ -280,18 +306,21 @@ function sendDiscordMessage(data) {
 }
 
 function updateDB(data) {
-  const userPromises = Object.keys(data.users).map((userID) => {
-    const user = data.users[userID];
+  const userPromises = Object.keys(data.users).map((steamID) => {
+    const user = data.users[steamID];
+
+    // Find the highest match ID for this user
+    const maxMatchID = Math.max(...user.matches);
 
     const params = {
       TableName: process.env.table,
       Key: {
-        steamID: userID,
+        steamID: steamID,
       },
       UpdateExpression:
         "SET last_matchID = :last_matchID, updated_at = :updated_at, dotaname = :dotaname",
       ExpressionAttributeValues: {
-        ":last_matchID": user.matchID,
+        ":last_matchID": maxMatchID,
         ":updated_at": Date.now(),
         ":dotaname": user.personaname,
       },

@@ -54,9 +54,9 @@ function API() {
     return match;
   }
 
-  function getLatestMatch(steamID) {
+  function getRecentMatches(steamID) {
     return getRequest(`players/${steamID}/matches`, {
-      limit: 1,
+      limit: 10,
       significant: 0,
     });
   }
@@ -72,7 +72,7 @@ function API() {
   }
 
   this.getMatch = getMatch.bind(this);
-  this.getLatestMatch = getLatestMatch.bind(this);
+  this.getRecentMatches = getRecentMatches.bind(this);
   this.getPlayer = getPlayer.bind(this);
   this.requestParse = requestParse.bind(this);
 }
