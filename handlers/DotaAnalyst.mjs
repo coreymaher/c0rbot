@@ -837,28 +837,55 @@ async function analyzeMatch(
   playerId,
   playerName,
 ) {
-  const prompt = [{ role: "system", content: SYSTEM_PROMPT.trim() }];
+  const player = match.players.find((p) => p.playerId === playerId);
+  const heroName = player?.hero || "Unknown";
 
-  // Add Turbo-specific rules only for Turbo games
+  const prompt = [
+    // Static system prompt (always cached)
+    { role: "system", content: SYSTEM_PROMPT.trim() },
+
+    // Meta heroes for this match composition (cached per hero lineup)
+    {
+      role: "system",
+      content: `Meta Heroes for this match (high-MMR ranking, 1=strongest):\n${JSON.stringify(matchHeroesMeta)}`,
+    },
+
+    // Popular items for this specific hero (cached per hero type)
+    {
+      role: "system",
+      content: `Popular Items for ${heroName} by game phase (from last 100 professional matches):\n${JSON.stringify(popularItems)}`,
+    },
+  ];
+
+  // Add Turbo-specific rules only for Turbo games (cached separately)
   if (match.gameMode === "Turbo") {
     prompt.push({ role: "system", content: TURBO_ADDENDUM.trim() });
   }
 
-  const player = match.players.find((p) => p.playerId === playerId);
-  const heroName = player?.hero || "Unknown";
-
+  // Dynamic match data and player info (never cached)
   prompt.push({
     role: "user",
-    content: USER_PROMPT.trim()
-      .replace("{{PLAYER_ID}}", playerId)
-      .replace("{{PLAYER_NAME}}", playerName)
-      .replace("{{HERO_NAME}}", heroName)
-      .replace("{{META_HEROES}}", JSON.stringify(matchHeroesMeta))
-      .replace("{{POPULAR_ITEMS}}", JSON.stringify(popularItems))
-      .replace("{{MATCH_JSON}}", JSON.stringify(match)),
+    content: `Analyze this match for player ${playerName} (ID: ${playerId}) playing ${heroName}:\n\n${JSON.stringify(match)}`,
   });
 
   const response = await OpenAI.chatCompletions(prompt, "gpt-5");
+
+  // Log token usage analytics
+  if (response.usage) {
+    const usage = response.usage;
+    const cachedTokens = usage.prompt_tokens_details?.cached_tokens || 0;
+    console.log("Token usage:", {
+      total_tokens: usage.total_tokens,
+      prompt_tokens: usage.prompt_tokens,
+      completion_tokens: usage.completion_tokens,
+      cached_tokens: cachedTokens,
+      cache_hit_rate:
+        cachedTokens > 0
+          ? `${((cachedTokens / usage.prompt_tokens) * 100).toFixed(1)}%`
+          : "0%",
+      uncached_tokens: usage.prompt_tokens - cachedTokens,
+    });
+  }
 
   return JSON.parse(response.choices[0].message.content);
 }
@@ -950,26 +977,4 @@ TURBO MODE ADDENDUM
 - This match is Turbo. Economy and pacing stats (GPM, XPM, kills) are inflated by design.
 - Do not call GPM/XPM/kill rates "high/low" unless explicitly relative to this match (team averages, lane opponent, enemy heroes).
 - Popular item timings are based on professional matches and may not align with Turbo's accelerated pace; focus on item choices rather than timing criticism.
-`;
-
-const USER_PROMPT = `
-PLAYER_ID:
-{{PLAYER_ID}}
-
-PLAYER_NAME:
-{{PLAYER_NAME}}
-
-Meta Heroes:
-Object mapping heroes in this match to their high-MMR meta ranking position (1 = strongest)
-Format: {"Hero Name": 15, "Another Hero": 23}
-{{META_HEROES}}
-
-Popular Items for {{HERO_NAME}} by Game Phase:
-Object containing arrays of most popular items for this hero by game phase from the last 100 professional matches
-Format: {"early_game": [...], "mid_game": [...], "late_game": [...]}
-Use this for itemization recommendations and evaluating player's item choices across different phases
-{{POPULAR_ITEMS}}
-
-OpenDota Match Data:
-{{MATCH_JSON}}
 `;
