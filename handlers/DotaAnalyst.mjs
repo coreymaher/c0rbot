@@ -6,6 +6,7 @@ import OpenDotaAPI from "../OpenDotaAPI.js";
 import OpenAI from "../OpenAI.mjs";
 import DotaConstants from "../DotaConstants.js";
 import items from "dotaconstants/build/items.json" with { type: "json" };
+import itemIds from "dotaconstants/build/item_ids.json" with { type: "json" };
 
 const cacheNamespace = "dota-ai-analyzer";
 const metaCacheNamespace = "dota-meta";
@@ -20,7 +21,7 @@ function createTimer(operationName) {
     end: () => {
       const duration = Date.now() - start;
       console.log(`${operationName} completed: ${duration}ms`);
-    }
+    },
   };
 }
 
@@ -113,6 +114,13 @@ export async function handler(event) {
     const playerHero = DotaConstants.heroes[player.hero_id].name;
     const playerName = player.personaname;
 
+    const itemsTimer = createTimer("hero item popularity loading");
+    const heroItemPopularity = await OpenDotaAPI.getHeroItemPopularity(
+      player.hero_id,
+    );
+    const popularItems = processPopularItems(heroItemPopularity, items);
+    itemsTimer.end();
+
     await discord.sendInteractionResponse(
       application_id,
       interaction_token,
@@ -127,12 +135,16 @@ export async function handler(event) {
     const matchHeroesMeta = getMatchHeroesMeta(match, meta.heroes);
 
     console.log("Match payload for LLM:", JSON.stringify(match, null, 2));
-    console.log("Meta heroes for LLM:", JSON.stringify(matchHeroesMeta, null, 2));
+    console.log(
+      "Meta heroes for LLM:",
+      JSON.stringify(matchHeroesMeta, null, 2),
+    );
 
     const analysisTimer = createTimer("AI analysis");
     const analysis = await analyzeMatch(
       match,
       matchHeroesMeta,
+      popularItems,
       Number(player_id),
       playerName,
     );
@@ -260,7 +272,12 @@ async function loadMeta() {
       heroes: sortedHeroes,
     };
 
-    await cache.set(metaCacheNamespace, cacheKey, JSON.stringify(metaData), ONE_DAY);
+    await cache.set(
+      metaCacheNamespace,
+      cacheKey,
+      JSON.stringify(metaData),
+      ONE_DAY,
+    );
 
     return metaData;
   } catch (err) {
@@ -275,7 +292,7 @@ async function loadMeta() {
 }
 
 function getMatchHeroesMeta(match, allHeroesMeta) {
-  const matchHeroes = match.players.map(player => player.hero);
+  const matchHeroes = match.players.map((player) => player.hero);
   return matchHeroes.reduce((acc, hero) => {
     const position = allHeroesMeta.indexOf(hero) + 1;
     if (position > 0) {
@@ -283,6 +300,53 @@ function getMatchHeroesMeta(match, allHeroesMeta) {
     }
     return acc;
   }, {});
+}
+
+function processPopularItems(itemPopularityData, itemsMapping) {
+  const processPhase = (phaseItems, phaseName) => {
+    if (!phaseItems) return [];
+
+    const itemsWithNames = Object.entries(phaseItems)
+      .map(([itemId, count]) => {
+        const itemName = itemIds[itemId];
+        const itemData = itemsMapping[itemName];
+
+        if (!itemData || !itemName) {
+          return null;
+        }
+
+        // Filter out recipes by checking the item name
+        if (itemName.includes("recipe")) {
+          return null;
+        }
+
+        // Filter out basic component items (passive stat items with no active behavior)
+        if (itemData.qual === "component" && !itemData.behavior) {
+          return null;
+        }
+
+        // Filter out low-cost consumables (laning items), but keep high-impact consumables like Moon Shard
+        if (itemData.qual === "consumable" && itemData.cost < 300) {
+          return null;
+        }
+
+        return { name: itemData.dname, count };
+      })
+      .filter(Boolean)
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 10)
+      .map((item) => item.name);
+
+    return itemsWithNames;
+  };
+
+  const result = {
+    early_game: processPhase(itemPopularityData.early_game_items, "early_game"),
+    mid_game: processPhase(itemPopularityData.mid_game_items, "mid_game"),
+    late_game: processPhase(itemPopularityData.late_game_items, "late_game"),
+  };
+
+  return result;
 }
 
 async function generateCompactMatch(match, focusPlayerId) {
@@ -293,11 +357,12 @@ async function generateCompactMatch(match, focusPlayerId) {
     gameMode: DotaConstants.gameModes[match.game_mode],
     radiantKills: match.radiant_score,
     direKills: match.dire_score,
-    pick_bans: match.picks_bans?.map((pick_ban) => ({
-      type: pick_ban.is_pick ? "pick" : "ban",
-      hero: DotaConstants.heroes?.[pick_ban.hero_id]?.name || "Unknown",
-      team: pick_ban.team === 0 ? "radiant" : "dire",
-    })) || [],
+    pick_bans:
+      match.picks_bans?.map((pick_ban) => ({
+        type: pick_ban.is_pick ? "pick" : "ban",
+        hero: DotaConstants.heroes?.[pick_ban.hero_id]?.name || "Unknown",
+        team: pick_ban.team === 0 ? "radiant" : "dire",
+      })) || [],
     radiantGoldAdvantage: match.radiant_gold_adv,
     radiantXpAdvantage: match.radiant_xp_adv,
     players: preparePlayers(match, focusPlayerId),
@@ -765,7 +830,13 @@ function processTeamfights(match, focusPlayerId) {
   });
 }
 
-async function analyzeMatch(match, matchHeroesMeta, playerId, playerName) {
+async function analyzeMatch(
+  match,
+  matchHeroesMeta,
+  popularItems,
+  playerId,
+  playerName,
+) {
   const prompt = [{ role: "system", content: SYSTEM_PROMPT.trim() }];
 
   // Add Turbo-specific rules only for Turbo games
@@ -773,12 +844,17 @@ async function analyzeMatch(match, matchHeroesMeta, playerId, playerName) {
     prompt.push({ role: "system", content: TURBO_ADDENDUM.trim() });
   }
 
+  const player = match.players.find((p) => p.playerId === playerId);
+  const heroName = player?.hero || "Unknown";
+
   prompt.push({
     role: "user",
     content: USER_PROMPT.trim()
       .replace("{{PLAYER_ID}}", playerId)
       .replace("{{PLAYER_NAME}}", playerName)
+      .replace("{{HERO_NAME}}", heroName)
       .replace("{{META_HEROES}}", JSON.stringify(matchHeroesMeta))
+      .replace("{{POPULAR_ITEMS}}", JSON.stringify(popularItems))
       .replace("{{MATCH_JSON}}", JSON.stringify(match)),
   });
 
@@ -831,15 +907,23 @@ ANALYSIS STANDARDS
 - When referencing items, analyze timing/impact relative to role and purchase timing.
 - Don't criticize component item usage if likely upgraded; focus on final items and their purpose.
 
+ITEM ANALYSIS
+- Consider when items were purchased relative to game duration when evaluating usage counts.
+- Items bought late in the match should not be criticized for low usage due to limited time available.
+- Factor in item cooldowns when assessing if usage was reasonable for time owned.
+- Late-game purchases may have been situational responses to immediate threats.
+
 RECOMMENDATIONS
 - Must align with actual Dota gameplay phases; avoid vague concepts.
 - Use meta heroes only if relevant to player's hero/role (counters, alternatives).
 - Don't attribute abilities heroes don't possess; assume healing/damage from items if no ability exists.
+- Reference popular items data when making itemization suggestions; consider if player missed core items or made situational choices.
 
 SUMMARY (<=300 words)
 - Focus on player performance with qualitative interpretation, not raw K/D/A/GPM/XPM numbers.
 - Include match closeness: "closely contested," "moderately one-sided," or "heavily one-sided."
 - Add draft note if clearly imbalanced (severe counters, composition issues).
+- Analyze player's impact across game phases (early, mid, late game) based on match context and duration.
 
 STRENGTHS (1-5 items, <=25 words each)
 - Meaningful advantages/successes for the role. Include metrics/timestamps only if useful.
@@ -865,6 +949,7 @@ const TURBO_ADDENDUM = `
 TURBO MODE ADDENDUM
 - This match is Turbo. Economy and pacing stats (GPM, XPM, kills) are inflated by design.
 - Do not call GPM/XPM/kill rates "high/low" unless explicitly relative to this match (team averages, lane opponent, enemy heroes).
+- Popular item timings are based on professional matches and may not align with Turbo's accelerated pace; focus on item choices rather than timing criticism.
 `;
 
 const USER_PROMPT = `
@@ -875,9 +960,15 @@ PLAYER_NAME:
 {{PLAYER_NAME}}
 
 Meta Heroes:
-# Object mapping heroes in this match to their high-MMR meta ranking position (1 = strongest)
-# Format: {"Hero Name": 15, "Another Hero": 23}
+Object mapping heroes in this match to their high-MMR meta ranking position (1 = strongest)
+Format: {"Hero Name": 15, "Another Hero": 23}
 {{META_HEROES}}
+
+Popular Items for {{HERO_NAME}} by Game Phase:
+Object containing arrays of most popular items for this hero by game phase from the last 100 professional matches
+Format: {"early_game": [...], "mid_game": [...], "late_game": [...]}
+Use this for itemization recommendations and evaluating player's item choices across different phases
+{{POPULAR_ITEMS}}
 
 OpenDota Match Data:
 {{MATCH_JSON}}

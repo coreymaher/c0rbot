@@ -47,7 +47,12 @@ function API() {
     const match = await getRequest(`matches/${matchID}`);
 
     if (cache && match?.od_data?.has_parsed) {
-      await cache.set(cacheNamespace, cacheKey, JSON.stringify(match), SEVEN_DAYS);
+      await cache.set(
+        cacheNamespace,
+        cacheKey,
+        JSON.stringify(match),
+        SEVEN_DAYS,
+      );
       console.log(`Cached parsed match ${matchID}`);
     }
 
@@ -65,15 +70,34 @@ function API() {
     return getRequest(`players/${steamID}`);
   }
 
+  function getHeroItemPopularity(heroID) {
+    return getRequest(`heroes/${heroID}/itemPopularity`);
+  }
+
   async function requestParse(matchID) {
-    return await fetch(`${prefix}/request/${matchID}`, {
-      method: "POST",
-    });
+    try {
+      const response = await fetch(`${prefix}request/${matchID}`, {
+        method: "POST",
+      });
+
+      if (!response.ok) {
+        const responseText = await response.text();
+        console.error(
+          `Parse request failed for match ${matchID}: ${response.status} - ${responseText}`,
+        );
+      }
+
+      return response;
+    } catch (error) {
+      console.error(`Parse request error for match ${matchID}:`, error);
+      throw error;
+    }
   }
 
   this.getMatch = getMatch.bind(this);
   this.getRecentMatches = getRecentMatches.bind(this);
   this.getPlayer = getPlayer.bind(this);
+  this.getHeroItemPopularity = getHeroItemPopularity.bind(this);
   this.requestParse = requestParse.bind(this);
 }
 

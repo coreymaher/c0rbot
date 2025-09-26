@@ -67,26 +67,34 @@ function loadRecentMatches(data) {
   console.log(`Checking matches for ${data.dbUsers.length} users`);
   const userPromises = data.dbUsers.map((user) => {
     return OpenDotaAPI.getRecentMatches(user.steamID).then((matches) => {
-      console.log(`User ${user.steamID}: got ${matches.length} recent matches, last notified ${user.last_matchID}`);
+      console.log(
+        `User ${user.steamID}: got ${matches.length} recent matches, last notified ${user.last_matchID}`,
+      );
 
       // Find new matches (match_id > last_matchID since IDs increment)
-      const newMatches = matches.filter(match => match.match_id > user.last_matchID);
-      console.log(`User ${user.steamID}: found ${newMatches.length} new matches`);
+      const newMatches = matches.filter(
+        (match) => match.match_id > user.last_matchID,
+      );
+      console.log(
+        `User ${user.steamID}: found ${newMatches.length} new matches`,
+      );
 
       if (newMatches.length > 0) {
         // Add matches to data.matches
-        newMatches.forEach(match => {
+        newMatches.forEach((match) => {
           data.matches[match.match_id] = {};
-          console.log(`New match queued: ${match.match_id} for user ${user.steamID}`);
+          console.log(
+            `New match queued: ${match.match_id} for user ${user.steamID}`,
+          );
         });
 
         // Store user with array of new match IDs, sorted oldest to newest
         const sortedMatchIDs = newMatches
-          .map(match => match.match_id)
+          .map((match) => match.match_id)
           .sort((a, b) => a - b); // Sort ascending (oldest first)
 
         data.users[user.steamID] = {
-          matches: sortedMatchIDs
+          matches: sortedMatchIDs,
         };
       }
 
@@ -95,7 +103,9 @@ function loadRecentMatches(data) {
   });
 
   return Promise.all(userPromises).then(() => {
-    console.log(`Found ${Object.keys(data.matches).length} new matches to process`);
+    console.log(
+      `Found ${Object.keys(data.matches).length} new matches to process`,
+    );
     return Promise.resolve(data);
   });
 }
@@ -145,14 +155,15 @@ function sendDiscordMessage(data) {
     const user = data.users[steamID];
 
     // Create a message promise for each match this user has
-    user.matches.forEach(matchID => {
+    user.matches.forEach((matchID) => {
       const match = data.matches[matchID];
-      messagePromises.push(createDiscordMessageForMatch(steamID, user, matchID, match));
+      messagePromises.push(
+        createDiscordMessageForMatch(steamID, user, matchID, match),
+      );
     });
   });
 
   function createDiscordMessageForMatch(steamID, user, matchID, match) {
-
     const dotaPlayer = match.players.reduce((player, curPlayer) => {
       let result = player;
       if (curPlayer.account_id == steamID) {
