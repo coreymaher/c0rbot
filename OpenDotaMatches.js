@@ -1,14 +1,20 @@
 "use strict";
 
-const AWS = require("aws-sdk");
+const { DynamoDBClient } = require("@aws-sdk/client-dynamodb");
+const {
+  DynamoDBDocumentClient,
+  ScanCommand,
+  UpdateCommand,
+} = require("@aws-sdk/lib-dynamodb");
 const Discord = require("./Discord");
 const OpenDotaAPI = require("./OpenDotaAPI");
 const DotaConstants = require("./DotaConstants");
 
 const environment = JSON.parse(process.env.environment);
 
+const client = new DynamoDBClient({});
 const discord = new Discord();
-const docClient = new AWS.DynamoDB.DocumentClient();
+const docClient = DynamoDBDocumentClient.from(client);
 
 discord.init(environment.discord);
 
@@ -16,51 +22,50 @@ function formatNumber(number) {
   return number >= 1000 ? (number / 1000).toFixed(1) + "k" : number;
 }
 
-function loadDBUsers(data) {
-  return new Promise((resolve, reject) => {
+async function loadDBUsers(data) {
+  try {
     const scanParams = {
       TableName: process.env.table,
     };
 
-    docClient.scan(scanParams, (err, result) => {
-      if (err) {
-        console.error("DynamoDB.get error:");
-        console.error(err);
-        console.error(scanParams);
-      }
-
-      data.dbUsers = result.Items;
-
-      resolve(data);
-    });
-  });
+    const result = await docClient.send(new ScanCommand(scanParams));
+    data.dbUsers = result.Items;
+    return data;
+  } catch (err) {
+    console.error("DynamoDB.get error:");
+    console.error(err);
+    console.error({ TableName: process.env.table });
+    return data;
+  }
 }
 
-function loadConfig(data) {
-  const scanParams = {
-    TableName: "config",
-    FilterExpression: "ConfigScope = :s",
-    ExpressionAttributeValues: {
-      ":s": "OpenDotaMatches",
-    },
-  };
+async function loadConfig(data) {
+  try {
+    const scanParams = {
+      TableName: "config",
+      FilterExpression: "ConfigScope = :s",
+      ExpressionAttributeValues: {
+        ":s": "OpenDotaMatches",
+      },
+    };
 
-  return new Promise((resolve, reject) => {
-    docClient.scan(scanParams, (err, result) => {
-      if (err) {
-        console.error("DynamoDB.get error:");
-        console.error(err);
-        console.error(scanParams);
-      }
+    const result = await docClient.send(new ScanCommand(scanParams));
+    data.config = result.Items.reduce((config, item) => {
+      config[item.Key] = item.Value;
+      return config;
+    }, {});
 
-      data.config = result.Items.reduce((config, item) => {
-        config[item.Key] = item.Value;
-        return config;
-      }, {});
-
-      resolve(data);
+    return data;
+  } catch (err) {
+    console.error("DynamoDB.get error:");
+    console.error(err);
+    console.error({
+      TableName: "config",
+      FilterExpression: "ConfigScope = :s",
+      ExpressionAttributeValues: { ":s": "OpenDotaMatches" },
     });
-  });
+    return data;
+  }
 }
 
 function loadRecentMatches(data) {
@@ -337,17 +342,15 @@ function updateDB(data) {
       },
     };
 
-    return new Promise((resolve, reject) => {
-      docClient.update(params, (err, response) => {
-        if (err) {
-          console.error("DynamoDB.update error:");
-          console.error(err);
-          console.error(params);
-        }
-
-        resolve();
-      });
-    });
+    return (async () => {
+      try {
+        await docClient.send(new UpdateCommand(params));
+      } catch (err) {
+        console.error("DynamoDB.update error:");
+        console.error(err);
+        console.error(params);
+      }
+    })();
   });
 
   return Promise.all(userPromises).then(() => {

@@ -1,6 +1,11 @@
 "use strict";
 
-const AWS = require("aws-sdk");
+const { DynamoDBClient } = require("@aws-sdk/client-dynamodb");
+const {
+  DynamoDBDocumentClient,
+  ScanCommand,
+  UpdateCommand,
+} = require("@aws-sdk/lib-dynamodb");
 const BigNumber = require("big-number");
 const Discord = require("./Discord");
 const DotaAPI = require("./DotaAPI");
@@ -8,8 +13,9 @@ const DotaConstants = require("./DotaConstants");
 
 const environment = JSON.parse(process.env.environment);
 
+const client = new DynamoDBClient({});
 const discord = new Discord();
-const docClient = new AWS.DynamoDB.DocumentClient();
+const docClient = DynamoDBDocumentClient.from(client);
 const dotaAPI = new DotaAPI(environment.dota);
 
 discord.init(environment.discord);
@@ -18,24 +24,21 @@ function formatNumber(number) {
   return number >= 1000 ? (number / 1000).toFixed(1) + "k" : number;
 }
 
-function loadDBUsers(data) {
-  return new Promise((resolve, reject) => {
+async function loadDBUsers(data) {
+  try {
     const scanParams = {
       TableName: process.env.table,
     };
 
-    docClient.scan(scanParams, (err, result) => {
-      if (err) {
-        console.error("DynamoDB.get error:");
-        console.error(err);
-        console.error(scanParams);
-      }
-
-      data.dbUsers = result.Items;
-
-      resolve(data);
-    });
-  });
+    const result = await docClient.send(new ScanCommand(scanParams));
+    data.dbUsers = result.Items;
+    return data;
+  } catch (err) {
+    console.error("DynamoDB.get error:");
+    console.error(err);
+    console.error({ TableName: process.env.table });
+    return data;
+  }
 }
 
 function loadRecentMatches(data) {
@@ -214,17 +217,15 @@ function updateDB(data) {
       },
     };
 
-    return new Promise((resolve, reject) => {
-      docClient.update(params, (err, response) => {
-        if (err) {
-          console.error("DynamoDB.update error:");
-          console.error(err);
-          console.error(params);
-        }
-
-        resolve();
-      });
-    });
+    return (async () => {
+      try {
+        await docClient.send(new UpdateCommand(params));
+      } catch (err) {
+        console.error("DynamoDB.update error:");
+        console.error(err);
+        console.error(params);
+      }
+    })();
   });
 
   return Promise.all(userPromises).then(() => {

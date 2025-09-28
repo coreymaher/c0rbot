@@ -1,8 +1,14 @@
 "use strict";
 
-import AWS from "aws-sdk";
+import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
+import {
+  DynamoDBDocumentClient,
+  ScanCommand,
+  UpdateCommand,
+} from "@aws-sdk/lib-dynamodb";
 
-const docClient = new AWS.DynamoDB.DocumentClient();
+const client = new DynamoDBClient({});
+const docClient = DynamoDBDocumentClient.from(client);
 
 import Discord from "../Discord.js";
 import { simpleGet } from "../utils.js";
@@ -23,7 +29,7 @@ const scanParams = {
 
 async function loadDBUsers() {
   try {
-    const data = await docClient.scan(scanParams).promise();
+    const data = await docClient.send(new ScanCommand(scanParams));
     return data.Items;
   } catch (ex) {
     console.error(`DynamoDB.get error: ${ex}`);
@@ -48,7 +54,7 @@ async function updateDB(playerID, lastMatchID) {
   };
 
   try {
-    await docClient.update(params).promise();
+    await docClient.send(new UpdateCommand(params));
   } catch (ex) {
     console.error(`DynamoDB.update error: ${ex}`);
   }

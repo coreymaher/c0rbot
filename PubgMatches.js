@@ -1,14 +1,20 @@
 "use strict";
 
-const AWS = require("aws-sdk");
+const { DynamoDBClient } = require("@aws-sdk/client-dynamodb");
+const {
+  DynamoDBDocumentClient,
+  ScanCommand,
+  UpdateCommand,
+} = require("@aws-sdk/lib-dynamodb");
 const Discord = require("./Discord");
 const PubgAPI = require("./PubgAPI");
 const ordinal = require("ordinal");
 
 const environment = JSON.parse(process.env.environment);
 
+const client = new DynamoDBClient({});
 const discord = new Discord();
-const docClient = new AWS.DynamoDB.DocumentClient();
+const docClient = DynamoDBDocumentClient.from(client);
 const pubgAPI = new PubgAPI(environment.pubg);
 
 const request = require("request");

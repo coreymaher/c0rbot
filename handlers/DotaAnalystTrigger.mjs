@@ -1,8 +1,8 @@
 "use strict";
 
-import AWS from "aws-sdk";
+import { LambdaClient, InvokeCommand } from "@aws-sdk/client-lambda";
 
-const lambda = new AWS.Lambda();
+const lambda = new LambdaClient({});
 
 const environment = JSON.parse(process.env.environment);
 
@@ -97,8 +97,8 @@ export async function handler(event) {
     });
   }
 
-  await lambda
-    .invoke({
+  await lambda.send(
+    new InvokeCommand({
       FunctionName: "reddit-dev-dotaAnalyst",
       InvocationType: "Event",
       Payload: JSON.stringify({
@@ -112,8 +112,8 @@ export async function handler(event) {
         player_id: playerId,
         skip_cache: isReanalyze,
       }),
-    })
-    .promise();
+    }),
+  );
 
   return makeResponse({
     type: 5,

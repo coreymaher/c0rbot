@@ -7,6 +7,12 @@ import OpenAI from "../OpenAI.mjs";
 import DotaConstants from "../DotaConstants.js";
 import items from "dotaconstants/build/items.json" with { type: "json" };
 import itemIds from "dotaconstants/build/item_ids.json" with { type: "json" };
+import {
+  SchedulerClient,
+  CreateScheduleCommand,
+  DeleteScheduleCommand,
+} from "@aws-sdk/client-scheduler";
+import crypto from "crypto";
 
 const cacheNamespace = "dota-ai-analyzer";
 const metaCacheNamespace = "dota-meta";
@@ -28,7 +34,19 @@ function createTimer(operationName) {
 const discord = new Discord();
 discord.init(environment.discord);
 
-export async function handler(event) {
+const scheduler = new SchedulerClient({ region: "us-east-1" });
+
+function createRetryRuleName(match_id, player_id, interaction_token) {
+  // Hash the interaction token to keep rule name under 64 chars
+  const tokenHash = crypto
+    .createHash("md5")
+    .update(interaction_token)
+    .digest("hex")
+    .substring(0, 8);
+  return `retry-${match_id}-${player_id}-${tokenHash}`;
+}
+
+export async function handler(event, context) {
   const {
     application_id,
     interaction_token,
@@ -36,9 +54,15 @@ export async function handler(event) {
     player_id,
     skip_cache,
     user_id,
+    retryAttempt = false,
   } = event;
 
   try {
+    // Clean up EventBridge rule if this is a retry attempt
+    if (retryAttempt) {
+      console.log(`Retry attempt for match ${match_id}`);
+      await cleanupEventBridgeRule(match_id, player_id, interaction_token);
+    }
     const cacheKey = `match:${match_id}:player:${player_id}`;
     if (!skip_cache) {
       const cacheTimer = createTimer("cache lookup");
@@ -91,11 +115,43 @@ export async function handler(event) {
       await OpenDotaAPI.requestParse(match_id);
       parseTimer.end();
 
-      await discord.sendInteractionResponse(application_id, interaction_token, {
-        flags: 64,
-        content: "Match has not been parsed by OpenDota. Try again later.",
-        allowed_mentions: { parse: [] },
-      });
+      if (retryAttempt) {
+        // This is already a retry attempt, use existing error message
+        await discord.sendInteractionResponse(
+          application_id,
+          interaction_token,
+          {
+            flags: 64,
+            content: "Match has not been parsed by OpenDota. Try again later.",
+            allowed_mentions: { parse: [] },
+          },
+        );
+      } else {
+        // First attempt, schedule a retry
+        await scheduleRetryAnalysis(
+          {
+            application_id,
+            interaction_token,
+            match_id,
+            player_id,
+            skip_cache: true,
+            user_id,
+            retryAttempt: true,
+          },
+          context,
+        );
+
+        await discord.sendInteractionResponse(
+          application_id,
+          interaction_token,
+          {
+            flags: 64,
+            content:
+              "Match has not been parsed by OpenDota. Retrying in 2 minutes...",
+            allowed_mentions: { parse: [] },
+          },
+        );
+      }
 
       return;
     }
@@ -978,3 +1034,56 @@ TURBO MODE ADDENDUM
 - Do not call GPM/XPM/kill rates "high/low" unless explicitly relative to this match (team averages, lane opponent, enemy heroes).
 - Popular item timings are based on professional matches and may not align with Turbo's accelerated pace; focus on item choices rather than timing criticism.
 `;
+
+async function scheduleRetryAnalysis(eventPayload, context) {
+  const { match_id, player_id, interaction_token } = eventPayload;
+  const ruleName = createRetryRuleName(match_id, player_id, interaction_token);
+  const scheduleTime = new Date(Date.now() + 2 * 60 * 1000); // 2 minutes from now
+
+  try {
+    // Create the EventBridge Scheduler schedule
+    await scheduler.send(
+      new CreateScheduleCommand({
+        Name: ruleName,
+        ScheduleExpression: `at(${scheduleTime.toISOString().replace(/\.\d{3}Z$/, "")})`,
+        State: "ENABLED",
+        Description: `Retry analysis for match ${match_id} player ${player_id}`,
+        Target: {
+          Arn: context.invokedFunctionArn,
+          RoleArn: context.invokedFunctionArn
+            .replace("lambda:us-east-1", "iam:")
+            .replace(":function:", ":role/")
+            .replace("reddit-dev-dotaAnalyst", "reddit-dev-scheduler-role"),
+          Input: JSON.stringify(eventPayload),
+        },
+        FlexibleTimeWindow: {
+          Mode: "OFF",
+        },
+      }),
+    );
+
+    console.log(
+      `Created EventBridge schedule: ${ruleName} scheduled for ${scheduleTime.toISOString()}`,
+    );
+  } catch (error) {
+    console.error(`Failed to schedule retry analysis: ${error.message}`);
+    throw error;
+  }
+}
+
+async function cleanupEventBridgeRule(match_id, player_id, interaction_token) {
+  const ruleName = createRetryRuleName(match_id, player_id, interaction_token);
+
+  try {
+    await scheduler.send(
+      new DeleteScheduleCommand({
+        Name: ruleName,
+      }),
+    );
+
+    console.log(`Cleaned up EventBridge schedule: ${ruleName}`);
+  } catch (error) {
+    // Don't throw error if schedule doesn't exist
+    console.log(`Could not cleanup schedule ${ruleName}: ${error.message}`);
+  }
+}

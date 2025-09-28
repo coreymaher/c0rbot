@@ -55,6 +55,18 @@ provider:
       Resource:
         - arn:aws:lambda:${aws:region}:${aws:accountId}:function:${self:service}-${sls:stage}-dotaAnalyst
         - arn:aws:lambda:${aws:region}:${aws:accountId}:function:${self:service}-${sls:stage}-dotaAnalyst:*
+    - Effect: Allow
+      Action:
+        - scheduler:CreateSchedule
+        - scheduler:DeleteSchedule
+        - scheduler:GetSchedule
+      Resource:
+        - arn:aws:scheduler:${aws:region}:${aws:accountId}:schedule/default/retry-*
+    - Effect: Allow
+      Action:
+        - iam:PassRole
+      Resource:
+        - arn:aws:iam::${aws:accountId}:role/${self:service}-${sls:stage}-scheduler-role
 
 functions:
   redditFeed:
@@ -219,6 +231,27 @@ functions:
 
 resources:
   Resources:
+    EventBridgeSchedulerRole:
+      Type: AWS::IAM::Role
+      Properties:
+        RoleName: ${self:service}-${sls:stage}-scheduler-role
+        AssumeRolePolicyDocument:
+          Version: "2012-10-17"
+          Statement:
+            - Effect: Allow
+              Principal:
+                Service: scheduler.amazonaws.com
+              Action: sts:AssumeRole
+        Policies:
+          - PolicyName: InvokeLambdaPolicy
+            PolicyDocument:
+              Version: "2012-10-17"
+              Statement:
+                - Effect: Allow
+                  Action:
+                    - lambda:InvokeFunction
+                  Resource:
+                    - arn:aws:lambda:${aws:region}:${aws:accountId}:function:${self:service}-${sls:stage}-dotaAnalyst
     FeedsTable:
       Type: AWS::DynamoDB::Table
       Properties:

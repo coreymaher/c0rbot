@@ -1,13 +1,19 @@
 "use strict";
 
-const AWS = require("aws-sdk");
+const { DynamoDBClient } = require("@aws-sdk/client-dynamodb");
+const {
+  DynamoDBDocumentClient,
+  ScanCommand,
+  PutCommand,
+} = require("@aws-sdk/lib-dynamodb");
 const Discord = require("./Discord");
 const FortniteAPI = require("./FortniteAPI");
 
 const environment = JSON.parse(process.env.environment);
 
+const client = new DynamoDBClient({});
 const discord = new Discord();
-const docClient = new AWS.DynamoDB.DocumentClient();
+const docClient = DynamoDBDocumentClient.from(client);
 const fortniteAPI = new FortniteAPI(environment.fortnite);
 
 const request = require("request");

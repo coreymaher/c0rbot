@@ -1,6 +1,12 @@
-import AWS from "aws-sdk";
+import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
+import {
+  DynamoDBDocumentClient,
+  GetCommand,
+  PutCommand,
+} from "@aws-sdk/lib-dynamodb";
 
-const dynamo = new AWS.DynamoDB.DocumentClient();
+const client = new DynamoDBClient({});
+const dynamo = DynamoDBDocumentClient.from(client);
 
 const TABLE = "cache";
 const DEFAULT_TTL = 7 * 24 * 60 * 60;
@@ -13,12 +19,12 @@ const nowSec = () => Math.floor(Date.now() / 1000);
  * @returns {Promise<string>}
  */
 async function get(namespace, key) {
-  const res = await dynamo
-    .get({
+  const res = await dynamo.send(
+    new GetCommand({
       TableName: TABLE,
       Key: { namespace, key },
-    })
-    .promise();
+    }),
+  );
 
   const item = res.Item;
   if (!item) return null;
@@ -38,8 +44,8 @@ async function get(namespace, key) {
 async function set(namespace, key, value, ttl = DEFAULT_TTL) {
   const now = nowSec();
 
-  await dynamo
-    .put({
+  await dynamo.send(
+    new PutCommand({
       TableName: TABLE,
       Item: {
         namespace,
@@ -48,8 +54,8 @@ async function set(namespace, key, value, ttl = DEFAULT_TTL) {
         created_at: now,
         expires_at: now + ttl,
       },
-    })
-    .promise();
+    }),
+  );
 }
 
 export default { get, set };

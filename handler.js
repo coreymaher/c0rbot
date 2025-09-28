@@ -1,14 +1,21 @@
 "use strict";
 
-const AWS = require("aws-sdk");
+const { DynamoDBClient } = require("@aws-sdk/client-dynamodb");
+const {
+  DynamoDBDocumentClient,
+  ScanCommand,
+  UpdateCommand,
+  PutCommand,
+} = require("@aws-sdk/lib-dynamodb");
 const request = require("request");
 const cheerio = require("cheerio");
 const crypto = require("crypto");
 
 const Discord = require("./Discord");
 
+const client = new DynamoDBClient({});
 const discord = new Discord();
-const docClient = new AWS.DynamoDB.DocumentClient();
+const docClient = DynamoDBDocumentClient.from(client);
 
 const environment = JSON.parse(process.env.environment);
 discord.init(environment.discord);
