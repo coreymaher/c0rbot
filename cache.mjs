@@ -4,6 +4,11 @@ import {
   GetCommand,
   PutCommand,
 } from "@aws-sdk/lib-dynamodb";
+import { gzip, gunzip } from "zlib";
+import { promisify } from "util";
+
+const gzipAsync = promisify(gzip);
+const gunzipAsync = promisify(gunzip);
 
 const client = new DynamoDBClient({});
 const dynamo = DynamoDBDocumentClient.from(client);
@@ -31,6 +36,13 @@ async function get(namespace, key) {
 
   if (item.expires_at <= nowSec()) return null;
 
+  // Decompress if compressed
+  if (item.compressed) {
+    const buffer = Buffer.from(item.value, "base64");
+    const decompressed = await gunzipAsync(buffer);
+    return decompressed.toString("utf-8");
+  }
+
   return item.value;
 }
 
@@ -44,13 +56,18 @@ async function get(namespace, key) {
 async function set(namespace, key, value, ttl = DEFAULT_TTL) {
   const now = nowSec();
 
+  // Compress value with gzip and encode as base64
+  const compressed = await gzipAsync(Buffer.from(value, "utf-8"));
+  const compressedValue = compressed.toString("base64");
+
   await dynamo.send(
     new PutCommand({
       TableName: TABLE,
       Item: {
         namespace,
         key,
-        value,
+        value: compressedValue,
+        compressed: true,
         created_at: now,
         expires_at: now + ttl,
       },
