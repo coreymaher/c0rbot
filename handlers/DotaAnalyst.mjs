@@ -7,6 +7,8 @@ import OpenAI from "../OpenAI.mjs";
 import DotaConstants from "../DotaConstants.js";
 import items from "dotaconstants/build/items.json" with { type: "json" };
 import itemIds from "dotaconstants/build/item_ids.json" with { type: "json" };
+import abilityIds from "dotaconstants/build/ability_ids.json" with { type: "json" };
+import abilities from "dotaconstants/build/abilities.json" with { type: "json" };
 import {
   SchedulerClient,
   CreateScheduleCommand,
@@ -160,22 +162,18 @@ export async function handler(event, context) {
     const match = await generateCompactMatch(fullMatch, Number(player_id));
     compactTimer.end();
 
-    const metaTimer = createTimer("meta data loading");
-    const meta = await loadMeta();
-    metaTimer.end();
-
     const player = fullMatch.players.find(
       (player) => player.account_id === Number(player_id),
     );
     const playerHero = DotaConstants.heroes[player.hero_id].name;
     const playerName = player.personaname;
 
-    const itemsTimer = createTimer("hero item popularity loading");
-    const heroItemPopularity = await OpenDotaAPI.getHeroItemPopularity(
+    const matchHeroesMeta = await loadMetaForGameMode(fullMatch);
+
+    const popularItems = await loadPopularItemsForGameMode(
+      fullMatch.game_mode,
       player.hero_id,
     );
-    const popularItems = processPopularItems(heroItemPopularity, items);
-    itemsTimer.end();
 
     await discord.sendInteractionResponse(
       application_id,
@@ -188,14 +186,6 @@ export async function handler(event, context) {
       true,
     );
 
-    const matchHeroesMeta = getMatchHeroesMeta(match, meta.heroes);
-
-    console.log("Match payload for LLM:", JSON.stringify(match, null, 2));
-    console.log(
-      "Meta heroes for LLM:",
-      JSON.stringify(matchHeroesMeta, null, 2),
-    );
-
     const analysisTimer = createTimer("AI analysis");
     const analysis = await analyzeMatch(
       match,
@@ -203,6 +193,7 @@ export async function handler(event, context) {
       popularItems,
       Number(player_id),
       playerName,
+      fullMatch,
     );
     analysisTimer.end();
 
@@ -280,6 +271,32 @@ export async function handler(event, context) {
   }
 }
 
+async function loadMetaForGameMode(match) {
+  if (match.game_mode === 18) return undefined; // Ability Draft
+
+  const timer = createTimer("meta data loading");
+  const results = await loadMeta();
+  timer.end();
+
+  const matchHeroes = match.players.map((player) => player.hero);
+  return matchHeroes.reduce((acc, hero) => {
+    const position = results.heroes.indexOf(hero) + 1;
+    if (position > 0) {
+      acc[hero] = position;
+    }
+    return acc;
+  }, {});
+}
+
+async function loadPopularItemsForGameMode(gameModeId, heroId) {
+  if (gameModeId === 18) return undefined; // Ability Draft
+
+  const timer = createTimer("hero item popularity loading");
+  const heroItemPopularity = await OpenDotaAPI.getHeroItemPopularity(heroId);
+  timer.end();
+  return processPopularItems(heroItemPopularity, items);
+}
+
 async function loadMeta() {
   const cacheKey = "heroes-meta";
 
@@ -347,19 +364,8 @@ async function loadMeta() {
   }
 }
 
-function getMatchHeroesMeta(match, allHeroesMeta) {
-  const matchHeroes = match.players.map((player) => player.hero);
-  return matchHeroes.reduce((acc, hero) => {
-    const position = allHeroesMeta.indexOf(hero) + 1;
-    if (position > 0) {
-      acc[hero] = position;
-    }
-    return acc;
-  }, {});
-}
-
 function processPopularItems(itemPopularityData, itemsMapping) {
-  const processPhase = (phaseItems, phaseName) => {
+  const processPhase = (phaseItems) => {
     if (!phaseItems) return [];
 
     const itemsWithNames = Object.entries(phaseItems)
@@ -397,9 +403,9 @@ function processPopularItems(itemPopularityData, itemsMapping) {
   };
 
   const result = {
-    early_game: processPhase(itemPopularityData.early_game_items, "early_game"),
-    mid_game: processPhase(itemPopularityData.mid_game_items, "mid_game"),
-    late_game: processPhase(itemPopularityData.late_game_items, "late_game"),
+    early_game: processPhase(itemPopularityData.early_game_items),
+    mid_game: processPhase(itemPopularityData.mid_game_items),
+    late_game: processPhase(itemPopularityData.late_game_items),
   };
 
   return result;
@@ -464,7 +470,7 @@ function preparePlayers(match, focusPlayerId) {
       runesPickedUp: player.rune_pickups,
       teamfightParticipation: player.teamfight_participation,
       stunsSeconds: player.stuns,
-      abandoned: player.leaver_status > 0,
+      abandoned: player.leaver_status > 1,
       lane: LANE_NAMES[player.lane_role],
       lastHitTimes: player.lh_t,
       denyTimes: player.dn_t,
@@ -478,8 +484,25 @@ function preparePlayers(match, focusPlayerId) {
 
     if (!isFocus) return baseStats;
 
+    // Extract drafted abilities for Ability Draft mode from ability_upgrades_arr
+    const isAbilityDraft = match.game_mode === 18;
+    const draftedAbilities =
+      isAbilityDraft && player.ability_upgrades_arr
+        ? [...new Set(player.ability_upgrades_arr)]
+            .map((abilityId) => {
+              const abilityKey = abilityIds[abilityId];
+              if (!abilityKey || abilityKey.includes("special_bonus")) {
+                return null;
+              }
+              return abilities[abilityKey]?.dname || abilityKey;
+            })
+            .filter(Boolean)
+            .sort()
+        : undefined;
+
     return {
       ...baseStats,
+      ...(draftedAbilities ? { draftedAbilities } : {}),
       vision: {
         placed: {
           observer: player.obs_placed,
@@ -892,6 +915,7 @@ async function analyzeMatch(
   popularItems,
   playerId,
   playerName,
+  fullMatch,
 ) {
   const player = match.players.find((p) => p.playerId === playerId);
   const heroName = player?.hero || "Unknown";
@@ -899,23 +923,30 @@ async function analyzeMatch(
   const prompt = [
     // Static system prompt (always cached)
     { role: "system", content: SYSTEM_PROMPT.trim() },
-
-    // Meta heroes for this match composition (cached per hero lineup)
-    {
-      role: "system",
-      content: `Meta Heroes for this match (high-MMR ranking, 1=strongest):\n${JSON.stringify(matchHeroesMeta)}`,
-    },
-
-    // Popular items for this specific hero (cached per hero type)
-    {
-      role: "system",
-      content: `Popular Items for ${heroName} by game phase (from last 100 professional matches):\n${JSON.stringify(popularItems)}`,
-    },
   ];
 
-  // Add Turbo-specific rules only for Turbo games (cached separately)
-  if (match.gameMode === "Turbo") {
-    prompt.push({ role: "system", content: TURBO_ADDENDUM.trim() });
+  // Meta heroes for this match composition (cached per hero lineup)
+  if (matchHeroesMeta) {
+    prompt.push({
+      role: "system",
+      content: `Meta Heroes for this match (high-MMR ranking, 1=strongest):\n${JSON.stringify(matchHeroesMeta)}`,
+    });
+  }
+
+  // Popular items for this specific hero (cached per hero type)
+  if (popularItems) {
+    prompt.push({
+      role: "system",
+      content: `Popular Items for ${heroName} by game phase (from last 100 professional matches):\n${JSON.stringify(popularItems)}`,
+    });
+  }
+
+  // Add game mode-specific rules if available (cached separately per mode)
+  if (GAME_MODE_ADDENDUM[fullMatch.game_mode]) {
+    prompt.push({
+      role: "system",
+      content: GAME_MODE_ADDENDUM[fullMatch.game_mode].trim(),
+    });
   }
 
   // Dynamic match data and player info (never cached)
@@ -923,6 +954,8 @@ async function analyzeMatch(
     role: "user",
     content: `Analyze this match for player ${playerName} (ID: ${playerId}) playing ${heroName}:\n\n${JSON.stringify(match)}`,
   });
+
+  console.log("Analyzing Match", { prompt });
 
   const response = await OpenAI.chatCompletions(prompt, "gpt-5");
 
@@ -1028,12 +1061,23 @@ SCHEMA
 }
 `;
 
-const TURBO_ADDENDUM = `
-TURBO MODE ADDENDUM
-- This match is Turbo. Economy and pacing stats (GPM, XPM, kills) are inflated by design.
+const GAME_MODE_ADDENDUM = {
+  23: `
+TURBO MODE
+- This is a Turbo match. Economy and pacing stats (GPM, XPM, kills) are inflated by design.
 - Do not call GPM/XPM/kill rates "high/low" unless explicitly relative to this match (team averages, lane opponent, enemy heroes).
 - Popular item timings are based on professional matches and may not align with Turbo's accelerated pace; focus on item choices rather than timing criticism.
-`;
+`,
+  18: `
+ABILITY DRAFT
+- This is a Ability Draft match.
+- Players drafted custom abilities; heroes don't have normal abilities.
+- Focus on ability synergy and usage patterns from combatAnalysis and draftedAbilities.
+- Evaluate items based on actual drafted abilities, not hero defaults.
+- Don't reference abilities heroes "should have".
+- Include an analysis of the drafted abilities in the summary.
+`,
+};
 
 async function scheduleRetryAnalysis(eventPayload, context) {
   const { match_id, player_id, interaction_token } = eventPayload;
