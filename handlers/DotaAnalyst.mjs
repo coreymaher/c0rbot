@@ -985,6 +985,10 @@ Write concise, actionable insights about the specified player.
 Refer to the player by the provided player name.
 Return ONLY one JSON object that matches the schema exactly-no extra keys, no surrounding text or code fences.
 
+MATCH DATA FORMAT
+- lastHitTimes, denyTimes, xpTime, goldTimes: Arrays of cumulative values at each minute mark (index 0 = minute 0, index 10 = minute 10, etc.)
+- radiantGoldAdvantage, radiantXpAdvantage: Arrays showing advantage over time at each minute
+
 CONSTRAINTS
 - Use only data explicitly present in JSON; never invent, infer, or speculate on missing values.
 - Focus strictly on the specified player_id; all stats must come from that player's record.
@@ -1009,6 +1013,7 @@ DAMAGE ANALYSIS
 - Use damageTaken breakdown to identify survivability issues and positioning problems.
 - Analyze combatAnalysis for ability/item usage efficiency and target prioritization.
 - Compare uses vs hits vs damage to assess accuracy and effectiveness.
+- Many abilities are legitimately used for farming/wave clear; don't criticize high uses without hero hits unless it's a key single-target ability or long-cooldown ultimate.
 - Suggest itemization based on damage sources (BKB for magical, armor for physical).
 - Identify unused or underused abilities/items that could improve performance.
 
