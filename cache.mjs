@@ -60,6 +60,10 @@ async function set(namespace, key, value, ttl = DEFAULT_TTL) {
   const compressed = await gzipAsync(Buffer.from(value, "utf-8"));
   const compressedValue = compressed.toString("base64");
 
+  const uncompressedSize = value.length;
+  const compressedSize = compressedValue.length;
+  console.log(`Cache set [${namespace}:${key}] - Uncompressed: ${(uncompressedSize / 1024).toFixed(2)} KB, Compressed: ${(compressedSize / 1024).toFixed(2)} KB (${((compressedSize / uncompressedSize) * 100).toFixed(1)}%)`);
+
   await dynamo.send(
     new PutCommand({
       TableName: TABLE,

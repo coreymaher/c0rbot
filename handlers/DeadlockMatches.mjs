@@ -149,7 +149,21 @@ async function handleMatch(match, user) {
     thumbnail,
   };
 
-  return await discord.sendEmbed(embed, "results");
+  const components = [
+    {
+      type: 1,
+      components: [
+        {
+          type: 2,
+          style: 1,
+          label: "Analyze",
+          custom_id: `ai_dl:${match.match_id}:${user.player_id}`,
+        },
+      ],
+    },
+  ];
+
+  return await discord.sendEmbed(embed, "results", components);
 }
 
 export async function handler() {

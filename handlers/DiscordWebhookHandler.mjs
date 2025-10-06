@@ -75,16 +75,37 @@ export async function handler(event) {
     });
   }
 
-  // Parse custom_id: ai:<match_id>:<player_id> or reanalyze:<match_id>:<player_id>
+  // Parse custom_id: ai:<match_id>:<player_id>, reanalyze:<match_id>:<player_id>
+  // or ai_dl:<match_id>:<player_id>, reanalyze_dl:<match_id>:<player_id>
   const parts = interaction.data.custom_id.split(":");
-  if (parts.length !== 3 || (parts[0] !== "ai" && parts[0] !== "reanalyze")) {
+  if (parts.length !== 3) {
     return makeResponse({
       type: 4,
       data: { flags: 64, content: "Malformed action. Try again." },
     });
   }
+
   const [action, matchId, playerId] = parts;
-  const isReanalyze = action === "reanalyze";
+
+  // Determine game type and action
+  let functionName;
+  let isReanalyze;
+
+  if (action === "ai" || action === "reanalyze") {
+    // Dota
+    functionName = "reddit-dev-dotaAnalyst";
+    isReanalyze = action === "reanalyze";
+  } else if (action === "ai_dl" || action === "reanalyze_dl") {
+    // Deadlock
+    functionName = "reddit-dev-deadlockAnalyst";
+    isReanalyze = action === "reanalyze_dl";
+  } else {
+    return makeResponse({
+      type: 4,
+      data: { flags: 64, content: "Unsupported game type." },
+    });
+  }
+
   const userId = interaction.member?.user?.id || interaction.user?.id;
 
   if (isReanalyze && userId !== environment.discord.adminUserId) {
@@ -99,7 +120,7 @@ export async function handler(event) {
 
   await lambda.send(
     new InvokeCommand({
-      FunctionName: "reddit-dev-dotaAnalyst",
+      FunctionName: functionName,
       InvocationType: "Event",
       Payload: JSON.stringify({
         application_id: interaction.application_id,

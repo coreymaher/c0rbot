@@ -55,6 +55,8 @@ provider:
       Resource:
         - arn:aws:lambda:${aws:region}:${aws:accountId}:function:${self:service}-${sls:stage}-dotaAnalyst
         - arn:aws:lambda:${aws:region}:${aws:accountId}:function:${self:service}-${sls:stage}-dotaAnalyst:*
+        - arn:aws:lambda:${aws:region}:${aws:accountId}:function:${self:service}-${sls:stage}-deadlockAnalyst
+        - arn:aws:lambda:${aws:region}:${aws:accountId}:function:${self:service}-${sls:stage}-deadlockAnalyst:*
     - Effect: Allow
       Action:
         - scheduler:CreateSchedule
@@ -219,12 +221,15 @@ functions:
       - schedule:
           rate: rate(1 hour)
           enabled: true
-  dotaAnalystTrigger:
-    handler: handlers/DotaAnalystTrigger.handler
+  discordWebhookHandler:
+    handler: handlers/DiscordWebhookHandler.handler
     url:
       authType: NONE
   dotaAnalyst:
     handler: handlers/DotaAnalyst.handler
+    timeout: 180
+  deadlockAnalyst:
+    handler: handlers/DeadlockAnalyst.handler
     timeout: 180
   embedTest:
     handler: handler.embedTest
@@ -252,6 +257,7 @@ resources:
                     - lambda:InvokeFunction
                   Resource:
                     - arn:aws:lambda:${aws:region}:${aws:accountId}:function:${self:service}-${sls:stage}-dotaAnalyst
+                    - arn:aws:lambda:${aws:region}:${aws:accountId}:function:${self:service}-${sls:stage}-deadlockAnalyst
     FeedsTable:
       Type: AWS::DynamoDB::Table
       Properties:
