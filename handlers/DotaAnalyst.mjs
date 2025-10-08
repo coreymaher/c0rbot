@@ -994,6 +994,7 @@ CONSTRAINTS
 - Focus strictly on the specified player_id; all stats must come from that player's record.
 - Round integers to whole numbers; use thousands separators for large numbers.
 - Convert JSON timestamps into mm:ss format; don't add timestamps to stats without time values.
+- Format percentages as whole numbers with % symbol (e.g., 75% not 0.75).
 - Comparisons only against values in this match (team averages, lane opponents, enemy cores).
 
 ROLE AWARENESS

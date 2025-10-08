@@ -257,7 +257,6 @@ resources:
                     - lambda:InvokeFunction
                   Resource:
                     - arn:aws:lambda:${aws:region}:${aws:accountId}:function:${self:service}-${sls:stage}-dotaAnalyst
-                    - arn:aws:lambda:${aws:region}:${aws:accountId}:function:${self:service}-${sls:stage}-deadlockAnalyst
     FeedsTable:
       Type: AWS::DynamoDB::Table
       Properties:

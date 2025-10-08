@@ -13,6 +13,7 @@ const docClient = DynamoDBDocumentClient.from(client);
 import Discord from "../Discord.js";
 import { simpleGet } from "../utils.js";
 import * as constants from "../DeadlockConstants.mjs";
+import DeadlockAPI from "../DeadlockAPI.mjs";
 
 const discord = new Discord();
 
@@ -88,6 +89,10 @@ function formatRank(average) {
 
 async function handleMatch(match, user) {
   console.log(`Found match: ${match.match_id}`);
+
+  // Always fetch match metadata to warm cache for analyst
+  const metadata = await DeadlockAPI.getMatchMetadata(match.match_id);
+
   const result = match.match_result === match.player_team ? "won" : "lost";
   const hero = constants.heroes[match.hero_id];
 
@@ -118,7 +123,19 @@ async function handleMatch(match, user) {
     inline: true,
   });
 
-  const rank = formatRank(match.average_match_badge);
+  // Prefer rank from metadata, fall back to match history
+  let rank = null;
+  if (metadata?.match_info) {
+    const avgBadge = Math.round(
+      (metadata.match_info.average_badge_team0 +
+        metadata.match_info.average_badge_team1) /
+        2,
+    );
+    rank = formatRank(avgBadge);
+  } else {
+    rank = formatRank(match.average_match_badge);
+  }
+
   if (rank) {
     fields.push({
       name: "rank",

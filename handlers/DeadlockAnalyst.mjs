@@ -6,13 +6,7 @@ import Discord from "../Discord.js";
 import cache from "../cache.mjs";
 import OpenAI from "../OpenAI.mjs";
 import * as DeadlockConstants from "../DeadlockConstants.mjs";
-import {
-  SchedulerClient,
-  CreateScheduleCommand,
-  DeleteScheduleCommand,
-} from "@aws-sdk/client-scheduler";
-import crypto from "crypto";
-
+import DeadlockAPI from "../DeadlockAPI.mjs";
 const dbClient = new DynamoDBClient({});
 const docClient = DynamoDBDocumentClient.from(dbClient);
 
@@ -41,7 +35,7 @@ async function getPlayerName(player_id) {
           player_id: String(player_id),
           game: "deadlock",
         },
-      })
+      }),
     );
     return result.Item?.name || null;
   } catch (err) {
@@ -53,18 +47,6 @@ async function getPlayerName(player_id) {
 const discord = new Discord();
 discord.init(environment.discord);
 
-const scheduler = new SchedulerClient({ region: "us-east-1" });
-
-function createRetryRuleName(match_id, player_id, interaction_token) {
-  // Hash the interaction token to keep rule name under 64 chars
-  const tokenHash = crypto
-    .createHash("md5")
-    .update(interaction_token)
-    .digest("hex")
-    .substring(0, 8);
-  return `retry-dl-${match_id}-${player_id}-${tokenHash}`;
-}
-
 export async function handler(event, context) {
   const {
     application_id,
@@ -73,15 +55,9 @@ export async function handler(event, context) {
     player_id,
     skip_cache,
     user_id,
-    retryAttempt = false,
   } = event;
 
   try {
-    // Clean up EventBridge rule if this is a retry attempt
-    if (retryAttempt) {
-      console.log(`Retry attempt for match ${match_id}`);
-      await cleanupEventBridgeRule(match_id, player_id, interaction_token);
-    }
     const cacheKey = `match:${match_id}:player:${player_id}`;
     if (!skip_cache) {
       const cacheTimer = createTimer("cache lookup");
@@ -128,48 +104,15 @@ export async function handler(event, context) {
     );
 
     const matchTimer = createTimer("Deadlock API match fetch");
-    const rawMatchData = await fetchMatchData(match_id);
+    const rawMatchData = await DeadlockAPI.getMatchMetadata(match_id);
     matchTimer.end();
 
     if (!rawMatchData?.match_info) {
-      if (retryAttempt) {
-        // This is already a retry attempt, use existing error message
-        await discord.sendInteractionResponse(
-          application_id,
-          interaction_token,
-          {
-            flags: 64,
-            content: "Match data not available. Try again later.",
-            allowed_mentions: { parse: [] },
-          },
-        );
-      } else {
-        // First attempt, schedule a retry
-        await scheduleRetryAnalysis(
-          {
-            application_id,
-            interaction_token,
-            match_id,
-            player_id,
-            skip_cache: true,
-            user_id,
-            retryAttempt: true,
-          },
-          context,
-        );
-
-        await discord.sendInteractionResponse(
-          application_id,
-          interaction_token,
-          {
-            flags: 64,
-            content:
-              "Match data not yet available. Retrying in 2 minutes...",
-            allowed_mentions: { parse: [] },
-          },
-        );
-      }
-
+      await discord.sendInteractionResponse(application_id, interaction_token, {
+        flags: 64,
+        content: "Match data not available. Try again later.",
+        allowed_mentions: { parse: [] },
+      });
       return;
     }
 
@@ -180,19 +123,16 @@ export async function handler(event, context) {
     );
 
     if (!player) {
-      await discord.sendInteractionResponse(
-        application_id,
-        interaction_token,
-        {
-          flags: 64,
-          content: "Player not found in this match.",
-          allowed_mentions: { parse: [] },
-        },
-      );
+      await discord.sendInteractionResponse(application_id, interaction_token, {
+        flags: 64,
+        content: "Player not found in this match.",
+        allowed_mentions: { parse: [] },
+      });
       return;
     }
 
-    const playerHero = DeadlockConstants.heroes[player.hero_id]?.name || "Unknown";
+    const playerHero =
+      DeadlockConstants.heroes[player.hero_id]?.name || "Unknown";
 
     const nameTimer = createTimer("player name lookup");
     const playerName = await getPlayerName(player_id);
@@ -214,7 +154,11 @@ export async function handler(event, context) {
     itemsTimer.end();
 
     const compactTimer = createTimer("match data processing");
-    const compactMatch = generateCompactMatch(matchData, Number(player_id), itemsById);
+    const compactMatch = generateCompactMatch(
+      matchData,
+      Number(player_id),
+      itemsById,
+    );
     compactTimer.end();
 
     const analysisTimer = createTimer("AI analysis");
@@ -336,25 +280,22 @@ async function loadItems() {
         item_slot_type: item.item_slot_type,
         is_active_item: item.is_active_item,
         cost: item.cost,
-        properties: item.properties ? Object.entries(item.properties).reduce((acc, [key, prop]) => {
-          // Only include properties with non-zero, non-empty values
-          if (prop?.value && prop.value !== "0" && prop.value !== 0) {
-            acc[key] = { value: prop.value };
-          }
-          return acc;
-        }, {}) : undefined,
+        properties: item.properties
+          ? Object.entries(item.properties).reduce((acc, [key, prop]) => {
+              // Only include properties with non-zero, non-empty values
+              if (prop?.value && prop.value !== "0" && prop.value !== 0) {
+                acc[key] = { value: prop.value };
+              }
+              return acc;
+            }, {})
+          : undefined,
       };
       return acc;
     }, {});
 
     const itemsJson = JSON.stringify(itemsById);
 
-    await cache.set(
-      cacheNamespace,
-      cacheKey,
-      itemsJson,
-      ONE_DAY,
-    );
+    await cache.set(cacheNamespace, cacheKey, itemsJson, ONE_DAY);
 
     return itemsById;
   } catch (err) {
@@ -362,31 +303,6 @@ async function loadItems() {
     return {};
   } finally {
     clearTimeout(timeout);
-  }
-}
-
-async function fetchMatchData(matchId) {
-  try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 10000);
-
-    const url = `https://api.deadlock-api.com/v1/matches/${matchId}/metadata`;
-    const res = await fetch(url, {
-      signal: controller.signal,
-    });
-
-    clearTimeout(timeout);
-
-    if (!res.ok) {
-      console.error(`Failed to fetch match data: ${res.status}`);
-      return null;
-    }
-
-    const data = await res.json();
-    return data;
-  } catch (err) {
-    console.error(`Failed to fetch match data: ${err}`);
-    return null;
   }
 }
 
@@ -401,20 +317,72 @@ function stripHtml(text) {
 function formatUpgradeProperties(propertyUpgrades) {
   if (!propertyUpgrades || propertyUpgrades.length === 0) return "";
   return propertyUpgrades
-    .map(upgrade => `${upgrade.name}: ${upgrade.bonus}`)
+    .map((upgrade) => `${upgrade.name}: ${upgrade.bonus}`)
     .join(", ");
 }
 
-function preparePlayer(player, focusPlayerId, itemsById, allPlayers) {
+function preparePlayer(
+  player,
+  focusPlayerId,
+  itemsById,
+  allPlayers,
+  customStatsLookup,
+  matchData,
+) {
   const isFocus = player.account_id === focusPlayerId;
   const heroName = DeadlockConstants.heroes[player.hero_id]?.name || "Unknown";
-  const teamName = player.team === 0 ? "amber" : "sapphire";
+
+  // Extract time series stats - detailed for focus player, basic for others
+  const statsTimeline =
+    player.stats?.map((stat) => {
+      const timelineEntry = {
+        time_stamp_s: stat.time_stamp_s,
+        net_worth: stat.net_worth,
+        player_damage: stat.player_damage,
+        player_damage_taken: stat.player_damage_taken,
+        deaths: stat.deaths,
+        ...(isFocus && {
+          level: stat.level,
+          creep_kills: stat.creep_kills,
+          denies: stat.denies,
+          assists: stat.assists,
+          shots_hit: stat.shots_hit,
+          shots_missed: stat.shots_missed,
+          teammate_healing: stat.teammate_healing,
+          teammate_barriering: stat.teammate_barriering,
+        }),
+      };
+
+      // Add custom stats from the stats entry
+      if (stat.custom_user_stats && customStatsLookup) {
+        // Map of custom stat names to output field names
+        const customStatMapping = {
+          "Enemy Hero Accuracy##Immobile Hits": "immobile_hits",
+          "Bullet Stats##StunHitRate": "stun_hit_rate",
+          ...(isFocus && {
+            "Bullet Stats##HeroHitRate": "hero_hit_rate",
+            "Parry Miss": "parry_miss",
+            "Parry Success": "parry_success",
+            "PowerUp Permanent": "powerup_permanent",
+          }),
+        };
+
+        for (const customStat of stat.custom_user_stats) {
+          const statName = customStatsLookup[customStat.id];
+          const fieldName = customStatMapping[statName];
+          if (fieldName) {
+            timelineEntry[fieldName] = customStat.value;
+          }
+        }
+      }
+
+      return timelineEntry;
+    }) || [];
 
   const baseStats = {
     focus: isFocus,
-    account_id: player.account_id,
     hero: heroName,
-    team: teamName,
+    team: player.team,
     kills: player.kills,
     deaths: player.deaths,
     assists: player.assists,
@@ -424,6 +392,7 @@ function preparePlayer(player, focusPlayerId, itemsById, allPlayers) {
     level: player.level,
     hero_damage: player.hero_damage,
     player_damage: player.player_damage,
+    stats_timeline: statsTimeline,
   };
 
   if (!isFocus) return baseStats;
@@ -432,6 +401,14 @@ function preparePlayer(player, focusPlayerId, itemsById, allPlayers) {
   const itemPurchases = [];
   const abilityPurchases = [];
   const abilityLevels = new Map();
+
+  // Map of property names to values that should be excluded
+  const excludeDefaults = {
+    ChannelMoveSpeed: ["-1"],
+    AbilityUnitTargetLimit: ["1"],
+    AbilityResourceCost: ["0"],
+    AbilityCastDelay: ["0"],
+  };
 
   for (const entry of player.items ?? []) {
     const itemData = itemsById[entry.item_id];
@@ -447,8 +424,11 @@ function preparePlayer(player, focusPlayerId, itemsById, allPlayers) {
         description = stripHtml(itemData.description?.desc);
       } else {
         const tierKey = `t${currentLevel}_desc`;
-        description = stripHtml(itemData.description?.[tierKey]) ||
-                     formatUpgradeProperties(itemData.upgrades?.[currentLevel - 1]?.property_upgrades);
+        description =
+          stripHtml(itemData.description?.[tierKey]) ||
+          formatUpgradeProperties(
+            itemData.upgrades?.[currentLevel - 1]?.property_upgrades,
+          );
       }
 
       const abilityEntry = {
@@ -458,13 +438,19 @@ function preparePlayer(player, focusPlayerId, itemsById, allPlayers) {
         description,
       };
 
-      // Add all non-zero properties
+      // Add meaningful properties, excluding default/meaningless values
       if (itemData.properties) {
         const props = {};
         for (const [key, prop] of Object.entries(itemData.properties)) {
-          if (prop?.value) {
-            props[key] = prop.value;
-          }
+          const value = prop?.value;
+          if (!value) continue;
+
+          // Check if this property has excluded default values
+          const excludedValues = excludeDefaults[key];
+          if (excludedValues && excludedValues.includes(String(value)))
+            continue;
+
+          props[key] = value;
         }
         if (Object.keys(props).length > 0) {
           abilityEntry.properties = props;
@@ -484,13 +470,19 @@ function preparePlayer(player, focusPlayerId, itemsById, allPlayers) {
         cost: itemData.cost,
       };
 
-      // Add all non-zero properties
+      // Add meaningful properties, excluding default/meaningless values
       if (itemData.properties) {
         const props = {};
         for (const [key, prop] of Object.entries(itemData.properties)) {
-          if (prop?.value) {
-            props[key] = prop.value;
-          }
+          const value = prop?.value;
+          if (!value) continue;
+
+          // Check if this property has excluded default values
+          const excludedValues = excludeDefaults[key];
+          if (excludedValues && excludedValues.includes(String(value)))
+            continue;
+
+          props[key] = value;
         }
         if (Object.keys(props).length > 0) {
           itemEntry.properties = props;
@@ -509,22 +501,26 @@ function preparePlayer(player, focusPlayerId, itemsById, allPlayers) {
   }
 
   // Map death details with killer hero names
-  const deathTimeline = player.death_details?.map(death => {
-    const deathEntry = {
-      game_time_s: death.game_time_s,
-      time_to_kill_s: death.time_to_kill_s,
-    };
+  const deathTimeline =
+    player.death_details?.map((death) => {
+      const deathEntry = {
+        game_time_s: death.game_time_s,
+        time_to_kill_s: death.time_to_kill_s,
+      };
 
-    // Find the killer by player_slot
-    if (death.killer_player_slot !== undefined && allPlayers) {
-      const killer = allPlayers.find(p => p.player_slot === death.killer_player_slot);
-      if (killer?.hero_id) {
-        deathEntry.killed_by = DeadlockConstants.heroes[killer.hero_id]?.name || "Unknown";
+      // Find the killer by player_slot
+      if (death.killer_player_slot !== undefined && allPlayers) {
+        const killer = allPlayers.find(
+          (p) => p.player_slot === death.killer_player_slot,
+        );
+        if (killer?.hero_id) {
+          deathEntry.killed_by =
+            DeadlockConstants.heroes[killer.hero_id]?.name || "Unknown";
+        }
       }
-    }
 
-    return deathEntry;
-  }) || [];
+      return deathEntry;
+    }) || [];
 
   // Build kill timeline from other players' deaths
   const killTimeline = [];
@@ -542,29 +538,13 @@ function preparePlayer(player, focusPlayerId, itemsById, allPlayers) {
     killTimeline.sort((a, b) => a.game_time_s - b.game_time_s);
   }
 
-  // Include progression stats timeline
-  const statsTimeline = player.stats?.map(stat => ({
-    time_stamp_s: stat.time_stamp_s,
-    net_worth: stat.net_worth,
-    level: stat.level,
-    creep_kills: stat.creep_kills,
-    denies: stat.denies,
-    assists: stat.assists,
-    shots_hit: stat.shots_hit,
-    shots_missed: stat.shots_missed,
-    player_damage: stat.player_damage,
-    player_damage_taken: stat.player_damage_taken,
-    teammate_healing: stat.teammate_healing,
-    teammate_barriering: stat.teammate_barriering,
-  })) || [];
-
   return {
     ...baseStats,
     items: itemPurchases,
     abilities: abilityPurchases,
     death_timeline: deathTimeline,
     kill_timeline: killTimeline,
-    stats_timeline: statsTimeline,
+    damage_breakdown: buildFocusPlayerDamage(matchData, focusPlayerId),
   };
 }
 
@@ -585,18 +565,131 @@ function formatRank(rankValue) {
 }
 
 function generateCompactMatch(matchData, focusPlayerId, itemsById) {
-  const winningTeam = matchData.winning_team === 0 ? "The Amber Hand" : "The Sapphire Flame";
-
   // Calculate average match rank
-  const avgRank = Math.round((matchData.average_badge_team0 + matchData.average_badge_team1) / 2);
+  const avgRank = Math.round(
+    (matchData.average_badge_team0 + matchData.average_badge_team1) / 2,
+  );
   const matchRank = formatRank(avgRank);
+
+  // Build custom stats lookup from definitions
+  const customStatsLookup = {};
+  if (matchData.custom_user_stats) {
+    for (const def of matchData.custom_user_stats) {
+      customStatsLookup[def.id] = def.name;
+    }
+  }
+
+  // Filter and simplify objectives - only destroyed objectives with essential info
+  const objectives = (matchData.objectives || [])
+    .filter((obj) => obj.destroyed_time_s > 0)
+    .map((obj) => ({
+      team: obj.team,
+      objective_id: obj.team_objective_id,
+      destroyed_time_s: obj.destroyed_time_s,
+    }));
 
   return {
     match_id: matchData.match_id,
     duration_seconds: matchData.match_duration_s,
-    winning_team: winningTeam,
+    winning_team: matchData.winning_team,
     match_rank: matchRank,
-    players: matchData.players.map((player) => preparePlayer(player, focusPlayerId, itemsById, matchData.players)),
+    objectives: objectives,
+    mid_boss: matchData.mid_boss || [],
+    players: matchData.players.map((player) =>
+      preparePlayer(
+        player,
+        focusPlayerId,
+        itemsById,
+        matchData.players,
+        customStatsLookup,
+        matchData,
+      ),
+    ),
+  };
+}
+
+function buildFocusPlayerDamage(matchData, focusPlayerId) {
+  if (!matchData.damage_matrix?.damage_dealers) {
+    return null;
+  }
+
+  // Find the focus player's player_slot
+  const focusPlayer = matchData.players.find(
+    (p) => p.account_id === focusPlayerId,
+  );
+  if (!focusPlayer) return null;
+
+  const focusPlayerSlot = focusPlayer.player_slot;
+
+  // Find damage dealt BY focus player
+  const focusDealer = matchData.damage_matrix.damage_dealers.find(
+    (d) => d.dealer_player_slot === focusPlayerSlot,
+  );
+
+  const damageDealt = [];
+  if (focusDealer) {
+    // Aggregate all damage sources to get total damage to each player
+    const damageByTarget = {};
+    for (const source of focusDealer.damage_sources) {
+      for (const target of source.damage_to_players) {
+        if (!damageByTarget[target.target_player_slot]) {
+          damageByTarget[target.target_player_slot] = 0;
+        }
+        // Get the final damage value (last element in the array)
+        const finalDamage = target.damage[target.damage.length - 1] || 0;
+        damageByTarget[target.target_player_slot] += finalDamage;
+      }
+    }
+
+    // Convert to array with hero names
+    for (const [targetSlot, damage] of Object.entries(damageByTarget)) {
+      const targetPlayer = matchData.players.find(
+        (p) => p.player_slot === parseInt(targetSlot),
+      );
+      if (targetPlayer) {
+        damageDealt.push({
+          hero:
+            DeadlockConstants.heroes[targetPlayer.hero_id]?.name || "Unknown",
+          damage: Math.round(damage),
+        });
+      }
+    }
+  }
+
+  // Find damage dealt TO focus player
+  const damageReceived = [];
+  for (const dealer of matchData.damage_matrix.damage_dealers) {
+    if (dealer.dealer_player_slot === focusPlayerSlot) continue; // Skip self
+
+    let totalDamageFromDealer = 0;
+    for (const source of dealer.damage_sources) {
+      const targetEntry = source.damage_to_players.find(
+        (t) => t.target_player_slot === focusPlayerSlot,
+      );
+      if (targetEntry) {
+        const finalDamage =
+          targetEntry.damage[targetEntry.damage.length - 1] || 0;
+        totalDamageFromDealer += finalDamage;
+      }
+    }
+
+    if (totalDamageFromDealer > 0) {
+      const dealerPlayer = matchData.players.find(
+        (p) => p.player_slot === dealer.dealer_player_slot,
+      );
+      if (dealerPlayer) {
+        damageReceived.push({
+          hero:
+            DeadlockConstants.heroes[dealerPlayer.hero_id]?.name || "Unknown",
+          damage: Math.round(totalDamageFromDealer),
+        });
+      }
+    }
+  }
+
+  return {
+    damage_dealt: damageDealt.sort((a, b) => b.damage - a.damage),
+    damage_received: damageReceived.sort((a, b) => b.damage - a.damage),
   };
 }
 
@@ -649,11 +742,17 @@ Write concise, actionable insights about the specified player.
 Refer to the player by the provided player name.
 Return ONLY one JSON object that matches the schema exactly-no extra keys, no surrounding text or code fences.
 
+TEAMS
+- Team 0: The Amber Hand
+- Team 1: The Sapphire Flame
+- Always refer to teams by their names, not "Team 0" or "Team 1"
+
 CONSTRAINTS
 - Use only data explicitly present in JSON; never invent, infer, or speculate on missing values.
 - Focus strictly on the specified player account_id; all stats must come from that player's record.
 - Round integers to whole numbers; use thousands separators for large numbers.
 - Convert time values in seconds into mm:ss format when referencing them (e.g., game_time_s: 125 → "2:05").
+- Format percentages as whole numbers with % symbol (e.g., 75% not 0.75).
 - Comparisons only against values in this match (team averages, opponents).
 
 ABILITY UPGRADES
@@ -661,9 +760,16 @@ ABILITY UPGRADES
 - Higher level descriptions are additive - they build upon all previous levels.
 - A level 2 ability has the effects from level 0, level 1, AND level 2 combined.
 
-ROLE AWARENESS
-- Consider the player's performance relative to their team and opponents.
-- Frame strengths/weaknesses/recommendations according to match context.
+GAME MECHANICS
+- PowerUp Permanent: Refers to permanent hero buffs obtained by capturing the "Sinner's Sacrifice" objective or from breaking Golden Statues (which have a chance to drop permanent buffs). Higher values indicate strong objective control and map presence.
+- Cosmic Veils: Visual barriers located around the map at all Juke Rooms and beneath most structural arches that act as one-way vision blockers.
+
+ROLE ANALYSIS
+- Consider the player's role based on item builds, damage output, healing/utility stats, and playstyle.
+- Carries typically focus on scaling damage items and high player damage.
+- Supports typically build team utility items and provide healing/barriering.
+- When relevant, compare performance to similar-role players on the opposing team.
+- Frame strengths/weaknesses/recommendations according to the player's role and match context.
 
 ANALYSIS STANDARDS
 - List only meaningful contributions that stand out.
@@ -697,56 +803,3 @@ SCHEMA
   "recommendations": string[],
 }
 `;
-
-async function scheduleRetryAnalysis(eventPayload, context) {
-  const { match_id, player_id, interaction_token } = eventPayload;
-  const ruleName = createRetryRuleName(match_id, player_id, interaction_token);
-  const scheduleTime = new Date(Date.now() + 2 * 60 * 1000); // 2 minutes from now
-
-  try {
-    // Create the EventBridge Scheduler schedule
-    await scheduler.send(
-      new CreateScheduleCommand({
-        Name: ruleName,
-        ScheduleExpression: `at(${scheduleTime.toISOString().replace(/\.\d{3}Z$/, "")})`,
-        State: "ENABLED",
-        Description: `Retry analysis for Deadlock match ${match_id} player ${player_id}`,
-        Target: {
-          Arn: context.invokedFunctionArn,
-          RoleArn: context.invokedFunctionArn
-            .replace("lambda:us-east-1", "iam:")
-            .replace(":function:", ":role/")
-            .replace("reddit-dev-deadlockAnalyst", "reddit-dev-scheduler-role"),
-          Input: JSON.stringify(eventPayload),
-        },
-        FlexibleTimeWindow: {
-          Mode: "OFF",
-        },
-      }),
-    );
-
-    console.log(
-      `Created EventBridge schedule: ${ruleName} scheduled for ${scheduleTime.toISOString()}`,
-    );
-  } catch (error) {
-    console.error(`Failed to schedule retry analysis: ${error.message}`);
-    throw error;
-  }
-}
-
-async function cleanupEventBridgeRule(match_id, player_id, interaction_token) {
-  const ruleName = createRetryRuleName(match_id, player_id, interaction_token);
-
-  try {
-    await scheduler.send(
-      new DeleteScheduleCommand({
-        Name: ruleName,
-      }),
-    );
-
-    console.log(`Cleaned up EventBridge schedule: ${ruleName}`);
-  } catch (error) {
-    // Don't throw error if schedule doesn't exist
-    console.log(`Could not cleanup schedule ${ruleName}: ${error.message}`);
-  }
-}
