@@ -294,8 +294,8 @@ resources:
           - AttributeName: name
             KeyType: HASH
         ProvisionedThroughput:
-          ReadCapacityUnits: 5
-          WriteCapacityUnits: 5
+          ReadCapacityUnits: 1
+          WriteCapacityUnits: 1
     MatchesTable:
       Type: AWS::DynamoDB::Table
       Properties:
@@ -328,8 +328,8 @@ resources:
           - AttributeName: ConfigScope
             KeyType: RANGE
         ProvisionedThroughput:
-          ReadCapacityUnits: 5
-          WriteCapacityUnits: 5
+          ReadCapacityUnits: 1
+          WriteCapacityUnits: 1
     CacheTable:
       Type: AWS::DynamoDB::Table
       Properties:
