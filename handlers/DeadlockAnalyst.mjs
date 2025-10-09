@@ -379,6 +379,20 @@ function preparePlayer(
       return timelineEntry;
     }) || [];
 
+  // Get final powerup count from last stats entry
+  let powerupPermanent = 0;
+  if (player.stats && player.stats.length > 0 && customStatsLookup) {
+    const lastStat = player.stats[player.stats.length - 1];
+    if (lastStat.custom_user_stats) {
+      const powerupStat = lastStat.custom_user_stats.find(
+        (cs) => customStatsLookup[cs.id] === "PowerUp Permanent"
+      );
+      if (powerupStat) {
+        powerupPermanent = powerupStat.value;
+      }
+    }
+  }
+
   const baseStats = {
     focus: isFocus,
     hero: heroName,
@@ -392,6 +406,7 @@ function preparePlayer(
     level: player.level,
     hero_damage: player.hero_damage,
     player_damage: player.player_damage,
+    powerup_permanent: powerupPermanent,
     stats_timeline: statsTimeline,
   };
 
@@ -737,7 +752,8 @@ async function analyzeMatch(compactMatch, playerId, playerName) {
 }
 
 const SYSTEM_PROMPT = `
-You are a precise, non-speculative Deadlock analyst. Use the supplied match data along with your knowledge of Deadlock.
+You are a precise, non-speculative analyst for Deadlock, the third-person hero shooter MOBA by Valve.
+Use the supplied match data along with your knowledge of Deadlock.
 Write concise, actionable insights about the specified player.
 Refer to the player by the provided player name.
 Return ONLY one JSON object that matches the schema exactly-no extra keys, no surrounding text or code fences.
@@ -760,9 +776,18 @@ ABILITY UPGRADES
 - Higher level descriptions are additive - they build upon all previous levels.
 - A level 2 ability has the effects from level 0, level 1, AND level 2 combined.
 
+MAP & OBJECTIVES
+- The map has 3 lanes with 2v2 composition per lane.
+- Lane objectives (in order): Guardian (1 per lane) → Walker (1 per lane) → Base Guardians (2 per lane) → Shrines (2, shared) → Patron (2 phases, win condition).
+- Taking objectives grants team-wide benefits, map control, and Souls (primary currency).
+- Destroying enemy objectives unlocks additional flex slots for your team, allowing more items to be equipped.
+- Mid Boss: Spawns periodically and provides powerful team-wide buffs including bonus stats and a revive effect. Highly contested objective that can swing matches.
+- Urn deliveries: Provide team-wide soul bonuses and are valuable for team economy.
+
 GAME MECHANICS
-- PowerUp Permanent: Refers to permanent hero buffs obtained by capturing the "Sinner's Sacrifice" objective or from breaking Golden Statues (which have a chance to drop permanent buffs). Higher values indicate strong objective control and map presence.
+- PowerUp Permanent: Refers to permanent hero buffs obtained from Sinner's Sacrifice objectives (4 fixed locations per team) or from breaking Golden Statues scattered around the map. Higher values indicate strong map presence and farming.
 - Cosmic Veils: Visual barriers located around the map at all Juke Rooms and beneath most structural arches that act as one-way vision blockers.
+- Flex Slots: Players have limited item slots. Your team earns additional flex slots by destroying enemy objectives, allowing for more items and build flexibility.
 
 ROLE ANALYSIS
 - Consider the player's role based on item builds, damage output, healing/utility stats, and playstyle.
