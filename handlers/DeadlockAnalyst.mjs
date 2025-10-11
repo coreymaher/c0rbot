@@ -328,6 +328,7 @@ function preparePlayer(
   allPlayers,
   customStatsLookup,
   matchData,
+  teamfights,
 ) {
   const isFocus = player.account_id === focusPlayerId;
   const heroName = DeadlockConstants.heroes[player.hero_id]?.name || "Unknown";
@@ -393,6 +394,11 @@ function preparePlayer(
     }
   }
 
+  // Calculate total death duration
+  const totalDeathDuration = player.death_details
+    ? player.death_details.reduce((sum, death) => sum + (death.death_duration_s || 0), 0)
+    : 0;
+
   const baseStats = {
     focus: isFocus,
     hero: heroName,
@@ -407,6 +413,7 @@ function preparePlayer(
     hero_damage: player.hero_damage,
     player_damage: player.player_damage,
     powerup_permanent: powerupPermanent,
+    total_death_duration_s: totalDeathDuration,
     stats_timeline: statsTimeline,
   };
 
@@ -515,51 +522,112 @@ function preparePlayer(
     }
   }
 
-  // Map death details with killer hero names
-  const deathTimeline =
-    player.death_details?.map((death) => {
-      const deathEntry = {
-        game_time_s: death.game_time_s,
-        time_to_kill_s: death.time_to_kill_s,
-      };
+  // Calculate teamfight participation for focus player
+  let teamfightStats = null;
+  if (isFocus && teamfights && teamfights.length > 0) {
+    const playerSlot = player.player_slot;
+    const playerTeam = player.team;
+    const playerHero = DeadlockConstants.heroes[player.hero_id]?.name || "Unknown";
+    const participated = [];
 
-      // Find the killer by player_slot
-      if (death.killer_player_slot !== undefined && allPlayers) {
-        const killer = allPlayers.find(
-          (p) => p.player_slot === death.killer_player_slot,
-        );
-        if (killer?.hero_id) {
-          deathEntry.killed_by =
-            DeadlockConstants.heroes[killer.hero_id]?.name || "Unknown";
+    // Get focus player's position data for proximity checking
+    const focusPlayerPath = matchData.match_paths?.paths?.find(
+      (p) => p.player_slot === playerSlot
+    );
+
+    for (const fight of teamfights) {
+      // Check if player participated (died or got a kill)
+      const died = fight.participants.includes(playerSlot);
+
+      // Count kills in this fight by checking if this player killed enemies during the fight window
+      let kills = 0;
+      for (const p of allPlayers) {
+        if (p.team === playerTeam) continue; // Skip teammates
+
+        for (const death of p.death_details ?? []) {
+          if (
+            death.killer_player_slot === playerSlot &&
+            death.game_time_s >= fight.start_time_s &&
+            death.game_time_s <= fight.start_time_s + fight.duration_s
+          ) {
+            kills++;
+          }
         }
       }
 
-      return deathEntry;
-    }) || [];
+      // Check if player was nearby any death in this fight (even if they didn't get kills or die)
+      let wasNearby = false;
+      if (focusPlayerPath && !died && kills === 0 && matchData.match_paths) {
+        // Only check proximity if they didn't already participate via kills/deaths
+        const PROXIMITY_THRESHOLD = 1000; // Approx 50-100m, enough to catch ranged support/abilities
 
-  // Build kill timeline from other players' deaths
-  const killTimeline = [];
-  if (allPlayers) {
-    for (const p of allPlayers) {
-      for (const death of p.death_details ?? []) {
-        if (death.killer_player_slot === player.player_slot) {
-          killTimeline.push({
-            game_time_s: death.game_time_s,
-            victim: DeadlockConstants.heroes[p.hero_id]?.name || "Unknown",
-          });
+        for (const p of allPlayers) {
+          for (const death of p.death_details ?? []) {
+            // Check if this death is part of this teamfight
+            if (
+              death.game_time_s >= fight.start_time_s &&
+              death.game_time_s <= fight.start_time_s + fight.duration_s
+            ) {
+              // Get focus player's position at this death time
+              const deathTimeIdx = Math.floor(death.game_time_s);
+              if (deathTimeIdx >= 0 && deathTimeIdx < focusPlayerPath.x_pos.length && deathTimeIdx < focusPlayerPath.y_pos.length) {
+                // Decompress position
+                const xNormalized = focusPlayerPath.x_pos[deathTimeIdx] / matchData.match_paths.x_resolution;
+                const yNormalized = focusPlayerPath.y_pos[deathTimeIdx] / matchData.match_paths.y_resolution;
+                const focusX = focusPlayerPath.x_min + xNormalized * (focusPlayerPath.x_max - focusPlayerPath.x_min);
+                const focusY = focusPlayerPath.y_min + yNormalized * (focusPlayerPath.y_max - focusPlayerPath.y_min);
+
+                // Calculate distance to death position (2D distance, ignoring z)
+                const dx = focusX - death.death_pos.x;
+                const dy = focusY - death.death_pos.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+
+                if (distance <= PROXIMITY_THRESHOLD) {
+                  wasNearby = true;
+                  break;
+                }
+              }
+            }
+          }
+          if (wasNearby) break;
         }
+      }
+
+      if (died || kills > 0 || wasNearby) {
+        participated.push({
+          start_time_s: fight.start_time_s,
+          won: fight.winner === playerTeam,
+          kills: kills,
+          died: died,
+          ...(wasNearby && { nearby: true }),
+        });
       }
     }
-    killTimeline.sort((a, b) => a.game_time_s - b.game_time_s);
+
+    // Calculate overall stats
+    const totalFights = teamfights.length;
+    const participatedCount = participated.length;
+    const wonCount = participated.filter((f) => f.won).length;
+
+    teamfightStats = {
+      total_teamfights: totalFights,
+      participated: participatedCount,
+      won: wonCount,
+      lost: participatedCount - wonCount,
+      participation_rate:
+        totalFights > 0
+          ? Math.round((participatedCount / totalFights) * 100)
+          : 0,
+      fights: participated,
+    };
   }
 
   return {
     ...baseStats,
     items: itemPurchases,
     abilities: abilityPurchases,
-    death_timeline: deathTimeline,
-    kill_timeline: killTimeline,
     damage_breakdown: buildFocusPlayerDamage(matchData, focusPlayerId),
+    ...(teamfightStats && { teamfight_stats: teamfightStats }),
   };
 }
 
@@ -579,6 +647,179 @@ function formatRank(rankValue) {
   return tierName ? `${tierName} ${level}` : "Unknown";
 }
 
+function calculateDistance(pos1, pos2) {
+  const dx = pos1.x - pos2.x;
+  const dy = pos1.y - pos2.y;
+  const dz = pos1.z - pos2.z;
+  return Math.sqrt(dx * dx + dy * dy + dz * dz);
+}
+
+function prepareMatchTimeline(matchData) {
+  const events = [];
+
+  // Add all hero kills
+  for (const player of matchData.players) {
+    const heroName = DeadlockConstants.heroes[player.hero_id]?.name || "Unknown";
+
+    if (player.death_details) {
+      for (const death of player.death_details) {
+        // Find the killer
+        const killer = matchData.players.find(
+          (p) => p.player_slot === death.killer_player_slot
+        );
+        const killerName = killer
+          ? DeadlockConstants.heroes[killer.hero_id]?.name || "Unknown"
+          : "Unknown";
+
+        events.push({
+          type: "kill",
+          time: death.game_time_s,
+          killer: killerName,
+          victim: heroName,
+        });
+      }
+    }
+  }
+
+  // Add objective kills
+  if (matchData.objectives) {
+    for (const obj of matchData.objectives) {
+      if (obj.destroyed_time_s > 0) {
+        const teamName = obj.team === 0 ? "Amber Hand" : "Sapphire Flame";
+
+        // Map objective IDs to readable names
+        let objectiveName = `objective ${obj.team_objective_id}`;
+        // You might want to add a mapping for objective IDs to names like "Guardian", "Walker", etc.
+
+        events.push({
+          type: "objective",
+          time: obj.destroyed_time_s,
+          team: teamName,
+          objective: objectiveName,
+          objective_id: obj.team_objective_id,
+        });
+      }
+    }
+  }
+
+  // Add Mid Boss kills
+  if (matchData.mid_boss) {
+    for (const mbEvent of matchData.mid_boss) {
+      if (mbEvent.team_claimed !== undefined && mbEvent.team_killed_time_s) {
+        const teamName = mbEvent.team_claimed === 0 ? "Amber Hand" : "Sapphire Flame";
+        events.push({
+          type: "mid_boss",
+          time: mbEvent.team_killed_time_s,
+          team: teamName,
+        });
+      }
+    }
+  }
+
+  // Sort all events by time
+  events.sort((a, b) => a.time - b.time);
+
+  return events;
+}
+
+function detectTeamfights(matchData) {
+  // Collect all deaths with full context
+  const allDeaths = [];
+
+  for (const player of matchData.players) {
+    if (!player.death_details) continue;
+
+    for (const death of player.death_details) {
+      allDeaths.push({
+        victim_slot: player.player_slot,
+        victim_team: player.team,
+        killer_slot: death.killer_player_slot,
+        game_time_s: death.game_time_s,
+        position: death.death_pos,
+      });
+    }
+  }
+
+  // Sort deaths by time
+  allDeaths.sort((a, b) => a.game_time_s - b.game_time_s);
+
+  const TIME_WINDOW = 75; // seconds
+  const DISTANCE_THRESHOLD = 2000; // units
+  const MIN_DEATHS = 3;
+
+  const teamfights = [];
+  const usedDeaths = new Set();
+
+  for (let i = 0; i < allDeaths.length; i++) {
+    if (usedDeaths.has(i)) continue;
+
+    const anchorDeath = allDeaths[i];
+    const fightDeaths = [i];
+
+    // Find deaths within time and distance window
+    for (let j = i + 1; j < allDeaths.length; j++) {
+      if (usedDeaths.has(j)) continue;
+
+      const candidateDeath = allDeaths[j];
+
+      // Check time window
+      if (candidateDeath.game_time_s - anchorDeath.game_time_s > TIME_WINDOW) {
+        break; // Deaths are sorted, so we can stop here
+      }
+
+      // Check distance to any death already in this fight
+      let withinDistance = false;
+      for (const deathIdx of fightDeaths) {
+        const fightDeath = allDeaths[deathIdx];
+        const distance = calculateDistance(
+          candidateDeath.position,
+          fightDeath.position,
+        );
+        if (distance <= DISTANCE_THRESHOLD) {
+          withinDistance = true;
+          break;
+        }
+      }
+
+      if (withinDistance) {
+        fightDeaths.push(j);
+      }
+    }
+
+    // Check if this is a significant teamfight
+    if (fightDeaths.length >= MIN_DEATHS) {
+      const deaths = fightDeaths.map((idx) => allDeaths[idx]);
+
+      // Count teams involved
+      const team0Deaths = deaths.filter((d) => d.victim_team === 0).length;
+      const team1Deaths = deaths.filter((d) => d.victim_team === 1).length;
+
+      // Require both teams to have at least one death for it to be a "teamfight"
+      if (team0Deaths > 0 && team1Deaths > 0) {
+        const startTime = deaths[0].game_time_s;
+        const endTime = deaths[deaths.length - 1].game_time_s;
+
+        // Determine winner (team with fewer deaths)
+        const winner = team0Deaths < team1Deaths ? 0 : 1;
+
+        teamfights.push({
+          start_time_s: Math.round(startTime),
+          duration_s: Math.round(endTime - startTime),
+          team0_deaths: team0Deaths,
+          team1_deaths: team1Deaths,
+          winner: winner,
+          participants: deaths.map((d) => d.victim_slot),
+        });
+
+        // Mark these deaths as used
+        fightDeaths.forEach((idx) => usedDeaths.add(idx));
+      }
+    }
+  }
+
+  return teamfights;
+}
+
 function generateCompactMatch(matchData, focusPlayerId, itemsById) {
   // Calculate average match rank
   const avgRank = Math.round(
@@ -594,22 +835,19 @@ function generateCompactMatch(matchData, focusPlayerId, itemsById) {
     }
   }
 
-  // Filter and simplify objectives - only destroyed objectives with essential info
-  const objectives = (matchData.objectives || [])
-    .filter((obj) => obj.destroyed_time_s > 0)
-    .map((obj) => ({
-      team: obj.team,
-      objective_id: obj.team_objective_id,
-      destroyed_time_s: obj.destroyed_time_s,
-    }));
+  // Create unified match timeline
+  const timeline = prepareMatchTimeline(matchData);
+
+  // Detect teamfights
+  const teamfights = detectTeamfights(matchData);
 
   return {
     match_id: matchData.match_id,
     duration_seconds: matchData.match_duration_s,
     winning_team: matchData.winning_team,
     match_rank: matchRank,
-    objectives: objectives,
-    mid_boss: matchData.mid_boss || [],
+    timeline: timeline,
+    teamfights: teamfights,
     players: matchData.players.map((player) =>
       preparePlayer(
         player,
@@ -618,6 +856,7 @@ function generateCompactMatch(matchData, focusPlayerId, itemsById) {
         matchData.players,
         customStatsLookup,
         matchData,
+        teamfights,
       ),
     ),
   };
@@ -763,11 +1002,14 @@ TEAMS
 - Team 1: The Sapphire Flame
 - Always refer to teams by their names, not "Team 0" or "Team 1"
 
+MATCH DATA FORMAT
+- timeline: Unified chronological log of all match events including hero kills (killer/victim), objectives destroyed (team/objective), and Mid Boss kills (team). Use this to understand match flow and correlate events.
+
 CONSTRAINTS
 - Use only data explicitly present in JSON; never invent, infer, or speculate on missing values.
-- Focus strictly on the specified player account_id; all stats must come from that player's record.
+- Focus strictly on the focus player; all stats must come from that player's record.
 - Round integers to whole numbers; use thousands separators for large numbers.
-- Convert time values in seconds into mm:ss format when referencing them (e.g., game_time_s: 125 → "2:05").
+- Convert time values in seconds into mm:ss format when referencing them (e.g., time: 125 → "2:05").
 - Format percentages as whole numbers with % symbol (e.g., 75% not 0.75).
 - Comparisons only against values in this match (team averages, opponents).
 
@@ -785,16 +1027,29 @@ MAP & OBJECTIVES
 - Urn deliveries: Provide team-wide soul bonuses and are valuable for team economy.
 
 GAME MECHANICS
-- PowerUp Permanent: Refers to permanent hero buffs obtained from Sinner's Sacrifice objectives (4 fixed locations per team) or from breaking Golden Statues scattered around the map. Higher values indicate strong map presence and farming.
-- Cosmic Veils: Visual barriers located around the map at all Juke Rooms and beneath most structural arches that act as one-way vision blockers.
-- Flex Slots: Players have limited item slots. Your team earns additional flex slots by destroying enemy objectives, allowing for more items and build flexibility.
+- PowerUp Permanent: Refers to permanent hero buffs obtained from Sinner's Sacrifice objectives (6 fixed locations per team) or from breaking Golden Statues scattered around the map.
+- Cosmic Veils: Visual barriers located around the map at all juke rooms and beneath most structural arches that act as one-way vision blockers.
+- Flex Slots: Players have limited item slots. Teams earn additional flex slots by destroying enemy objectives, allowing for more items and build flexibility.
+- Item Categories: Items have three slot types - "weapon" (gun damage, fire rate, ammo), "vitality" (health, regen, survivability), and "spirit" (ability damage, cooldowns, spirit power). Most abilities scale with spirit power, making spirit items crucial for ability-focused heroes.
 
 ROLE ANALYSIS
 - Consider the player's role based on item builds, damage output, healing/utility stats, and playstyle.
 - Carries typically focus on scaling damage items and high player damage.
 - Supports typically build team utility items and provide healing/barriering.
-- When relevant, compare performance to similar-role players on the opposing team.
+- Identify the enemy player who appears to have filled the same role as the focus player based on hero choice, item builds, stats, and playstyle.
+- Prioritize comparing the focus player against this role counterpart rather than raw team averages (e.g., carry vs carry, support vs support).
+- Role-specific comparisons provide more meaningful context for performance evaluation.
 - Frame strengths/weaknesses/recommendations according to the player's role and match context.
+
+TEAMFIGHTS
+- Teamfights are automatically detected based on clustered deaths (3+ deaths from both teams within ~75s and close proximity).
+- The focus player has teamfight_stats showing participation, win/loss record, and individual fight performance.
+- Participation is tracked via: kills (secured eliminations), died (was killed), and nearby (was in close proximity to deaths but didn't get kills/die).
+- The nearby flag indicates the player was present at the fight and likely contributed through damage, healing, abilities, or other support without securing kills or dying.
+- Use teamfight context to provide deeper insights: "Died early in teamfights" vs "Secured kills but survived" vs "Present but avoided deaths" vs "Avoided major fights entirely."
+- Teamfight participation rate and win rate are key performance indicators.
+- Consider whether deaths occurred in teamfights (impactful) vs solo (poor positioning/overextension).
+- Highlight patterns: strong early teamfight performance, clutch late-game fights, or consistently dying first.
 
 ANALYSIS STANDARDS
 - List only meaningful contributions that stand out.
