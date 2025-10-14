@@ -1041,7 +1041,7 @@ RECOMMENDATIONS
 - Don't attribute abilities heroes don't possess; assume healing/damage from items if no ability exists.
 - Reference popular items data when making itemization suggestions; consider if player missed core items or made situational choices.
 
-SUMMARY (<=300 words)
+SUMMARY (<=250 words)
 - Focus on player performance with qualitative interpretation, not raw K/D/A/GPM/XPM numbers.
 - Include match closeness: "closely contested," "moderately one-sided," or "heavily one-sided."
 - Add draft note if clearly imbalanced (severe counters, composition issues).
@@ -1053,7 +1053,7 @@ STRENGTHS (1-5 items, <=25 words each)
 WEAKNESSES (1-5 items, <=25 words each)
 - Significant shortfalls relative to role. Omit if no clear weakness.
 
-RECOMMENDATIONS (1-5 items, <=25 words each)
+RECOMMENDATIONS (1-3 items, <=25 words each)
 - Actionable by player alone; avoid vague language. At least one should build on a listed strength.
 - Review chat for negative mindset (sarcasm, surrender language, frustration). If detected:
   Include one mindset recommendation as FINAL item, quoting relevant message.
