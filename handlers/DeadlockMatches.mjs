@@ -93,6 +93,19 @@ async function handleMatch(match, user) {
   // Always fetch match metadata to warm cache for analyst
   const metadata = await DeadlockAPI.getMatchMetadata(match.match_id);
 
+  // Skip matches with fewer than 2 real players (solo bot matches)
+  if (metadata?.match_info?.players) {
+    const realPlayerCount = metadata.match_info.players.filter(
+      (p) => p.account_id > 0,
+    ).length;
+    if (realPlayerCount < 2) {
+      console.log(
+        `Skipping match with only ${realPlayerCount} real player(s): ${match.match_id}`,
+      );
+      return { skipped: true };
+    }
+  }
+
   const result = match.match_result === match.player_team ? "won" : "lost";
   const hero = constants.heroes[match.hero_id];
 
@@ -204,7 +217,7 @@ export async function handler() {
     }
 
     const data = JSON.parse(content);
-    const seenIndex = data.findIndex(
+    let seenIndex = data.findIndex(
       (match) => match.match_id == user.last_match_id,
     );
     if (seenIndex === -1) {

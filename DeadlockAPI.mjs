@@ -5,44 +5,53 @@ import cache from "./cache.mjs";
 const SEVEN_DAYS = 7 * 24 * 60 * 60;
 const CACHE_NAMESPACE = "deadlock-matches";
 
-async function getMatchMetadata(matchId) {
+async function fetchMatchMetadataFromAPI(matchId) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 10000);
+
+  const url = `https://api.deadlock-api.com/v1/matches/${matchId}/metadata`;
+  const res = await fetch(url, {
+    signal: controller.signal,
+  });
+
+  clearTimeout(timeout);
+
+  if (!res.ok) {
+    console.error(`Failed to fetch match metadata: ${res.status}`);
+    return null;
+  }
+
+  return await res.json();
+}
+
+async function getMatchMetadata(matchId, { skipCache = false } = {}) {
   const cacheKey = `metadata:${matchId}`;
 
-  // Check cache first
-  const cachedMetadata = await cache.get(CACHE_NAMESPACE, cacheKey);
-  if (cachedMetadata) {
-    console.log(`Cache hit for match metadata ${matchId}`);
-    return JSON.parse(cachedMetadata);
+  // Check cache first (unless skipped)
+  if (!skipCache) {
+    const cachedMetadata = await cache.get(CACHE_NAMESPACE, cacheKey);
+    if (cachedMetadata) {
+      console.log(`Cache hit for match metadata ${matchId}`);
+      return JSON.parse(cachedMetadata);
+    }
+    console.log(`Cache miss for match metadata ${matchId}`);
   }
-  console.log(`Cache miss for match metadata ${matchId}`);
 
   // Fetch from API
   try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 10000);
+    const data = await fetchMatchMetadataFromAPI(matchId);
+    if (!data) return null;
 
-    const url = `https://api.deadlock-api.com/v1/matches/${matchId}/metadata`;
-    const res = await fetch(url, {
-      signal: controller.signal,
-    });
-
-    clearTimeout(timeout);
-
-    if (!res.ok) {
-      console.error(`Failed to fetch match metadata: ${res.status}`);
-      return null;
+    // Cache the metadata for 7 days (unless skipped)
+    if (!skipCache) {
+      await cache.set(
+        CACHE_NAMESPACE,
+        cacheKey,
+        JSON.stringify(data),
+        SEVEN_DAYS,
+      );
+      console.log(`Cached match metadata ${matchId}`);
     }
-
-    const data = await res.json();
-
-    // Cache the metadata for 7 days
-    await cache.set(
-      CACHE_NAMESPACE,
-      cacheKey,
-      JSON.stringify(data),
-      SEVEN_DAYS,
-    );
-    console.log(`Cached match metadata ${matchId}`);
 
     return data;
   } catch (err) {

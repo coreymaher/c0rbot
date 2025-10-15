@@ -150,14 +150,14 @@ export async function handler(event, context) {
     );
 
     const itemsTimer = createTimer("items data loading");
-    const itemsById = await loadItems();
+    const itemsData = await loadItems();
     itemsTimer.end();
 
     const compactTimer = createTimer("match data processing");
     const compactMatch = generateCompactMatch(
       matchData,
       Number(player_id),
-      itemsById,
+      itemsData,
     );
     compactTimer.end();
 
@@ -245,12 +245,14 @@ export async function handler(event, context) {
   }
 }
 
-async function loadItems() {
-  const cacheKey = "items-v3"; // Increment version when item structure changes
+export async function loadItems({ skipCache = false } = {}) {
+  const cacheKey = "items-v5"; // Increment version when item structure changes
 
-  const cachedItems = await cache.get(cacheNamespace, cacheKey);
-  if (cachedItems) {
-    return JSON.parse(cachedItems);
+  if (!skipCache) {
+    const cachedItems = await cache.get(cacheNamespace, cacheKey);
+    if (cachedItems) {
+      return JSON.parse(cachedItems);
+    }
   }
 
   const controller = new AbortController();
@@ -264,14 +266,19 @@ async function loadItems() {
 
     if (!res.ok) {
       console.error(`Failed to fetch items: ${res.status}`);
-      return {};
+      return { byId: {}, byClassName: {} };
     }
 
     const itemsArray = await res.json();
-    // Create an object keyed by item ID, keeping only fields we use
-    const itemsById = itemsArray.reduce((acc, item) => {
-      acc[item.id] = {
+
+    // Create two lookups: by ID and by class_name
+    const itemsById = {};
+    const itemsByClassName = {};
+
+    for (const item of itemsArray) {
+      const itemData = {
         id: item.id,
+        class_name: item.class_name,
         name: item.name,
         description: item.description,
         hero: item.hero,
@@ -290,17 +297,33 @@ async function loadItems() {
             }, {})
           : undefined,
       };
-      return acc;
-    }, {});
 
-    const itemsJson = JSON.stringify(itemsById);
+      itemsById[item.id] = itemData;
 
-    await cache.set(cacheNamespace, cacheKey, itemsJson, ONE_DAY);
+      // Build class_name lookup
+      if (item.class_name) {
+        itemsByClassName[item.class_name] = itemData;
+        // Also handle crit variants by stripping "_crit" suffix
+        if (item.class_name.endsWith("_crit")) {
+          const baseClassName = item.class_name.replace(/_crit$/, "");
+          if (!itemsByClassName[baseClassName]) {
+            itemsByClassName[baseClassName] = itemData;
+          }
+        }
+      }
+    }
 
-    return itemsById;
+    const itemsData = { byId: itemsById, byClassName: itemsByClassName };
+
+    if (!skipCache) {
+      const itemsJson = JSON.stringify(itemsData);
+      await cache.set(cacheNamespace, cacheKey, itemsJson, ONE_DAY);
+    }
+
+    return itemsData;
   } catch (err) {
     console.error(`Failed to load items: ${err}`);
-    return {};
+    return { byId: {}, byClassName: {} };
   } finally {
     clearTimeout(timeout);
   }
@@ -325,6 +348,7 @@ function preparePlayer(
   player,
   focusPlayerId,
   itemsById,
+  itemsByClassName,
   allPlayers,
   customStatsLookup,
   matchData,
@@ -386,7 +410,7 @@ function preparePlayer(
     const lastStat = player.stats[player.stats.length - 1];
     if (lastStat.custom_user_stats) {
       const powerupStat = lastStat.custom_user_stats.find(
-        (cs) => customStatsLookup[cs.id] === "PowerUp Permanent"
+        (cs) => customStatsLookup[cs.id] === "PowerUp Permanent",
       );
       if (powerupStat) {
         powerupPermanent = powerupStat.value;
@@ -396,7 +420,10 @@ function preparePlayer(
 
   // Calculate total death duration
   const totalDeathDuration = player.death_details
-    ? player.death_details.reduce((sum, death) => sum + (death.death_duration_s || 0), 0)
+    ? player.death_details.reduce(
+        (sum, death) => sum + (death.death_duration_s || 0),
+        0,
+      )
     : 0;
 
   const baseStats = {
@@ -527,12 +554,11 @@ function preparePlayer(
   if (isFocus && teamfights && teamfights.length > 0) {
     const playerSlot = player.player_slot;
     const playerTeam = player.team;
-    const playerHero = DeadlockConstants.heroes[player.hero_id]?.name || "Unknown";
     const participated = [];
 
     // Get focus player's position data for proximity checking
     const focusPlayerPath = matchData.match_paths?.paths?.find(
-      (p) => p.player_slot === playerSlot
+      (p) => p.player_slot === playerSlot,
     );
 
     for (const fight of teamfights) {
@@ -570,12 +596,24 @@ function preparePlayer(
             ) {
               // Get focus player's position at this death time
               const deathTimeIdx = Math.floor(death.game_time_s);
-              if (deathTimeIdx >= 0 && deathTimeIdx < focusPlayerPath.x_pos.length && deathTimeIdx < focusPlayerPath.y_pos.length) {
+              if (
+                deathTimeIdx >= 0 &&
+                deathTimeIdx < focusPlayerPath.x_pos.length &&
+                deathTimeIdx < focusPlayerPath.y_pos.length
+              ) {
                 // Decompress position
-                const xNormalized = focusPlayerPath.x_pos[deathTimeIdx] / matchData.match_paths.x_resolution;
-                const yNormalized = focusPlayerPath.y_pos[deathTimeIdx] / matchData.match_paths.y_resolution;
-                const focusX = focusPlayerPath.x_min + xNormalized * (focusPlayerPath.x_max - focusPlayerPath.x_min);
-                const focusY = focusPlayerPath.y_min + yNormalized * (focusPlayerPath.y_max - focusPlayerPath.y_min);
+                const xNormalized =
+                  focusPlayerPath.x_pos[deathTimeIdx] /
+                  matchData.match_paths.x_resolution;
+                const yNormalized =
+                  focusPlayerPath.y_pos[deathTimeIdx] /
+                  matchData.match_paths.y_resolution;
+                const focusX =
+                  focusPlayerPath.x_min +
+                  xNormalized * (focusPlayerPath.x_max - focusPlayerPath.x_min);
+                const focusY =
+                  focusPlayerPath.y_min +
+                  yNormalized * (focusPlayerPath.y_max - focusPlayerPath.y_min);
 
                 // Calculate distance to death position (2D distance, ignoring z)
                 const dx = focusX - death.death_pos.x;
@@ -626,7 +664,13 @@ function preparePlayer(
     ...baseStats,
     items: itemPurchases,
     abilities: abilityPurchases,
-    damage_breakdown: buildFocusPlayerDamage(matchData, focusPlayerId),
+    damage_healing_breakdown: buildFocusPlayerDamage(matchData, focusPlayerId),
+    sources: buildDamageBySource(
+      matchData,
+      focusPlayerId,
+      itemsById,
+      itemsByClassName,
+    ),
     ...(teamfightStats && { teamfight_stats: teamfightStats }),
   };
 }
@@ -659,13 +703,14 @@ function prepareMatchTimeline(matchData) {
 
   // Add all hero kills
   for (const player of matchData.players) {
-    const heroName = DeadlockConstants.heroes[player.hero_id]?.name || "Unknown";
+    const heroName =
+      DeadlockConstants.heroes[player.hero_id]?.name || "Unknown";
 
     if (player.death_details) {
       for (const death of player.death_details) {
         // Find the killer
         const killer = matchData.players.find(
-          (p) => p.player_slot === death.killer_player_slot
+          (p) => p.player_slot === death.killer_player_slot,
         );
         const killerName = killer
           ? DeadlockConstants.heroes[killer.hero_id]?.name || "Unknown"
@@ -706,7 +751,8 @@ function prepareMatchTimeline(matchData) {
   if (matchData.mid_boss) {
     for (const mbEvent of matchData.mid_boss) {
       if (mbEvent.team_claimed !== undefined && mbEvent.team_killed_time_s) {
-        const teamName = mbEvent.team_claimed === 0 ? "Amber Hand" : "Sapphire Flame";
+        const teamName =
+          mbEvent.team_claimed === 0 ? "Amber Hand" : "Sapphire Flame";
         events.push({
           type: "mid_boss",
           time: mbEvent.team_killed_time_s,
@@ -743,7 +789,8 @@ function detectTeamfights(matchData) {
   // Sort deaths by time
   allDeaths.sort((a, b) => a.game_time_s - b.game_time_s);
 
-  const TIME_WINDOW = 75; // seconds
+  const INITIAL_TIME_WINDOW = 45; // seconds - window to find 2nd death
+  const EXTENDED_TIME_WINDOW = 30; // seconds - rolling window for additional deaths
   const DISTANCE_THRESHOLD = 2000; // units
   const MIN_DEATHS = 3;
 
@@ -755,16 +802,30 @@ function detectTeamfights(matchData) {
 
     const anchorDeath = allDeaths[i];
     const fightDeaths = [i];
+    let lastDeathTime = anchorDeath.game_time_s;
 
-    // Find deaths within time and distance window
+    // Find deaths using rolling window approach
     for (let j = i + 1; j < allDeaths.length; j++) {
       if (usedDeaths.has(j)) continue;
 
       const candidateDeath = allDeaths[j];
 
-      // Check time window
-      if (candidateDeath.game_time_s - anchorDeath.game_time_s > TIME_WINDOW) {
-        break; // Deaths are sorted, so we can stop here
+      // Determine time window based on fight state
+      const timeWindow =
+        fightDeaths.length === 1
+          ? INITIAL_TIME_WINDOW // Looking for 2nd death
+          : EXTENDED_TIME_WINDOW; // Fight has started, use rolling window
+
+      // Check time window from the last death in the fight
+      if (candidateDeath.game_time_s - lastDeathTime > timeWindow) {
+        // Check if we should stop looking entirely (way past initial window)
+        if (
+          candidateDeath.game_time_s - anchorDeath.game_time_s >
+          INITIAL_TIME_WINDOW + EXTENDED_TIME_WINDOW * 3
+        ) {
+          break;
+        }
+        continue; // Skip but keep looking for potential re-engagement
       }
 
       // Check distance to any death already in this fight
@@ -783,6 +844,7 @@ function detectTeamfights(matchData) {
 
       if (withinDistance) {
         fightDeaths.push(j);
+        lastDeathTime = candidateDeath.game_time_s; // Extend window from this death
       }
     }
 
@@ -820,7 +882,7 @@ function detectTeamfights(matchData) {
   return teamfights;
 }
 
-function generateCompactMatch(matchData, focusPlayerId, itemsById) {
+export function generateCompactMatch(matchData, focusPlayerId, itemsData) {
   // Calculate average match rank
   const avgRank = Math.round(
     (matchData.average_badge_team0 + matchData.average_badge_team1) / 2,
@@ -843,7 +905,7 @@ function generateCompactMatch(matchData, focusPlayerId, itemsById) {
 
   return {
     match_id: matchData.match_id,
-    duration_seconds: matchData.match_duration_s,
+    duration_seconds: matchData.duration_s,
     winning_team: matchData.winning_team,
     match_rank: matchRank,
     timeline: timeline,
@@ -852,7 +914,8 @@ function generateCompactMatch(matchData, focusPlayerId, itemsById) {
       preparePlayer(
         player,
         focusPlayerId,
-        itemsById,
+        itemsData.byId,
+        itemsData.byClassName,
         matchData.players,
         customStatsLookup,
         matchData,
@@ -881,21 +944,67 @@ function buildFocusPlayerDamage(matchData, focusPlayerId) {
   );
 
   const damageDealt = [];
+  const healingDealt = [];
   if (focusDealer) {
-    // Aggregate all damage sources to get total damage to each player
+    const playerTeam = focusPlayer.team;
+
+    // Aggregate damage and healing to different targets
     const damageByTarget = {};
+    const healingByTarget = {};
+
     for (const source of focusDealer.damage_sources) {
+      // Check if this source only heals self (passive regen)
+      let hasSelfOnly = true;
+      let hasTeammateTargets = false;
+      let hasEnemyTargets = false;
+
       for (const target of source.damage_to_players) {
-        if (!damageByTarget[target.target_player_slot]) {
-          damageByTarget[target.target_player_slot] = 0;
+        const targetPlayer = matchData.players.find(
+          (p) => p.player_slot === target.target_player_slot,
+        );
+        if (!targetPlayer) continue;
+
+        if (targetPlayer.team !== playerTeam) {
+          hasEnemyTargets = true;
+          hasSelfOnly = false;
+        } else if (target.target_player_slot !== focusPlayerSlot) {
+          hasTeammateTargets = true;
+          hasSelfOnly = false;
         }
-        // Get the final damage value (last element in the array)
+      }
+
+      // Skip self-only healing sources (passive regen)
+      if (hasSelfOnly && !hasEnemyTargets && !hasTeammateTargets) {
+        continue;
+      }
+
+      for (const target of source.damage_to_players) {
+        // Only count damage to heroes (not NPCs)
+        const targetPlayer = matchData.players.find(
+          (p) => p.player_slot === target.target_player_slot,
+        );
+        if (!targetPlayer) continue;
+
         const finalDamage = target.damage[target.damage.length - 1] || 0;
-        damageByTarget[target.target_player_slot] += finalDamage;
+
+        // Separate damage to enemies vs healing to teammates/self
+        if (targetPlayer.team !== playerTeam) {
+          // Damage to enemies
+          if (!damageByTarget[target.target_player_slot]) {
+            damageByTarget[target.target_player_slot] = 0;
+          }
+          damageByTarget[target.target_player_slot] += finalDamage;
+        } else {
+          // Healing to teammates (including self from active abilities/items)
+          if (!healingByTarget[target.target_player_slot]) {
+            healingByTarget[target.target_player_slot] = 0;
+          }
+          healingByTarget[target.target_player_slot] += finalDamage;
+        }
       }
     }
 
-    // Convert to array with hero names
+    // Convert damage to array with hero names
     for (const [targetSlot, damage] of Object.entries(damageByTarget)) {
       const targetPlayer = matchData.players.find(
         (p) => p.player_slot === parseInt(targetSlot),
@@ -905,6 +1014,20 @@ function buildFocusPlayerDamage(matchData, focusPlayerId) {
           hero:
             DeadlockConstants.heroes[targetPlayer.hero_id]?.name || "Unknown",
           damage: Math.round(damage),
+        });
+      }
+    }
+
+    // Convert healing to array with hero names
+    for (const [targetSlot, healing] of Object.entries(healingByTarget)) {
+      const targetPlayer = matchData.players.find(
+        (p) => p.player_slot === parseInt(targetSlot),
+      );
+      if (targetPlayer) {
+        healingDealt.push({
+          hero:
+            DeadlockConstants.heroes[targetPlayer.hero_id]?.name || "Unknown",
+          healing: Math.round(healing),
         });
       }
     }
@@ -943,17 +1066,185 @@ function buildFocusPlayerDamage(matchData, focusPlayerId) {
 
   return {
     damage_dealt: damageDealt.sort((a, b) => b.damage - a.damage),
+    healing_dealt: healingDealt.sort((a, b) => b.healing - a.healing),
     damage_received: damageReceived.sort((a, b) => b.damage - a.damage),
   };
 }
 
+function buildDamageBySource(
+  matchData,
+  focusPlayerId,
+  itemsById,
+  itemsByClassName,
+) {
+  if (
+    !matchData.damage_matrix?.damage_dealers ||
+    !matchData.damage_matrix?.source_details
+  ) {
+    return null;
+  }
+
+  // Find the focus player
+  const focusPlayer = matchData.players.find(
+    (p) => p.account_id === focusPlayerId,
+  );
+  if (!focusPlayer) return null;
+
+  // Find the focus player's damage dealer entry
+  const focusDealer = matchData.damage_matrix.damage_dealers.find(
+    (d) => d.dealer_player_slot === focusPlayer.player_slot,
+  );
+  if (!focusDealer) return null;
+
+  const sourceNames = matchData.damage_matrix.source_details.source_name;
+  const playerTeam = focusPlayer.team;
+  const playerHeroId = focusPlayer.hero_id;
+
+  // Sources to exclude (generic modifiers, base stats, etc.)
+  const excludedSources = new Set([
+    "base_stat_regen",
+    "modifier_citadel_in_fountain",
+    "UnknownAbility",
+    "Ability", // Too generic, doesn't provide useful info
+    "Melee", // Duplicate of hero-specific melee abilities
+    "Bullet", // Low-level damage source, not shown in client
+  ]);
+
+  // Build set of class_names for items purchased by the player
+  const purchasedItemClassNames = new Set();
+  for (const purchase of focusPlayer.items ?? []) {
+    const itemData = itemsById[purchase.item_id];
+    if (itemData?.class_name) {
+      purchasedItemClassNames.add(itemData.class_name);
+    }
+  }
+
+  // Aggregate damage and healing separately
+  const damageSources = new Map();
+  const healingSources = new Map();
+  const seenSources = new Map(); // Track source names + category we've already processed
+
+  for (const source of focusDealer.damage_sources) {
+    const sourceName = sourceNames[source.source_details_index];
+    if (!sourceName || excludedSources.has(sourceName)) continue;
+
+    // Check if this source belongs to the focus player
+    // Try direct lookup first, then strip _crit suffix if not found
+    let sourceItemData = itemsByClassName[sourceName];
+    if (!sourceItemData && sourceName.endsWith("_crit")) {
+      const baseSourceName = sourceName.replace(/_crit$/, "");
+      sourceItemData = itemsByClassName[baseSourceName];
+    }
+
+    // If source not found in items API, skip it (can't verify ownership)
+    if (!sourceItemData) {
+      continue;
+    }
+
+    // Skip if source belongs to a different hero
+    if (sourceItemData.hero && sourceItemData.hero !== playerHeroId) {
+      continue;
+    }
+
+    // For non-hero-specific items, verify player purchased it
+    if (!sourceItemData.hero && !purchasedItemClassNames.has(sourceName)) {
+      continue;
+    }
+
+    // Sum damage across all targets and check if it's damage, healing, or self-healing
+    let totalDamage = 0;
+    let hasEnemyTargets = false;
+    let hasSelfOnly = true;
+    let hasTeammateTargets = false;
+
+    for (const target of source.damage_to_players) {
+      // Only count damage to heroes (players), not NPCs/troopers
+      const targetPlayer = matchData.players.find(
+        (p) => p.player_slot === target.target_player_slot,
+      );
+      if (!targetPlayer) continue;
+
+      const finalDamage = target.damage[target.damage.length - 1] || 0;
+      totalDamage += finalDamage;
+
+      // Check if target is on enemy team
+      if (targetPlayer.team !== playerTeam) {
+        hasEnemyTargets = true;
+        hasSelfOnly = false;
+      }
+      // Check if target is a teammate (not self)
+      else if (target.target_player_slot !== focusPlayer.player_slot) {
+        hasTeammateTargets = true;
+        hasSelfOnly = false;
+      }
+    }
+
+    if (totalDamage > 0) {
+      // Skip self-healing sources (passive regen items that only affect the player)
+      if (hasSelfOnly && !hasEnemyTargets && !hasTeammateTargets) {
+        continue;
+      }
+
+      // Try to resolve the source name to an item/ability
+      const itemData = itemsByClassName[sourceName];
+      let displayName = itemData?.name || sourceName;
+
+      // For weapon sources, use "Gun Damage" naming to match client
+      if (
+        sourceName.startsWith("citadel_weapon_") &&
+        !sourceName.includes("_crit")
+      ) {
+        displayName = "Gun Damage";
+      } else if (
+        sourceName.startsWith("citadel_weapon_") &&
+        sourceName.includes("_crit")
+      ) {
+        displayName = "Gun Damage - Crit";
+      }
+
+      const category = hasEnemyTargets ? "damage" : "healing";
+
+      // Skip if we've already processed this source name + category combination (take first occurrence only)
+      const dedupeKey = `${sourceName}:${category}`;
+      if (seenSources.has(dedupeKey)) continue;
+      seenSources.set(dedupeKey, true);
+
+      // Choose the appropriate map based on category
+      const sourceMap = category === "damage" ? damageSources : healingSources;
+
+      if (!sourceMap.has(displayName)) {
+        const sourceEntry = {
+          amount: 0,
+          source: displayName,
+        };
+
+        sourceMap.set(displayName, sourceEntry);
+      }
+
+      // Add to existing entry
+      const entry = sourceMap.get(displayName);
+      entry.amount += Math.round(totalDamage);
+    }
+  }
+
+  // Convert to arrays and sort by amount
+  const damageArray = Array.from(damageSources.values());
+  damageArray.sort((a, b) => b.amount - a.amount);
+
+  const healingArray = Array.from(healingSources.values());
+  healingArray.sort((a, b) => b.amount - a.amount);
+
+  return {
+    damage: damageArray,
+    healing: healingArray,
+  };
+}
+
 async function analyzeMatch(compactMatch, playerId, playerName) {
-  const player = compactMatch.players.find((p) => p.account_id === playerId);
+  const player = compactMatch.players.find((p) => p.focus);
   const heroName = player?.hero || "Unknown";
 
-  const playerIdentifier = playerName
-    ? `player ${playerName} (ID: ${playerId})`
-    : `player (ID: ${playerId})`;
+  const playerIdentifier = playerName ? `player ${playerName}` : "the player";
 
   const prompt = [
     // Static system prompt (always cached)
@@ -1060,7 +1351,7 @@ RECOMMENDATIONS
 - Must align with actual Deadlock gameplay; avoid vague concepts.
 - Focus on actionable improvements the player can control.
 
-SUMMARY (<=300 words)
+SUMMARY (<=250 words)
 - Focus on player performance with qualitative interpretation, not just raw K/D/A numbers.
 - Include match closeness: "closely contested," "moderately one-sided," or "heavily one-sided."
 - Include the match rank/skill level in the summary.
@@ -1072,7 +1363,7 @@ STRENGTHS (1-5 items, <=25 words each)
 WEAKNESSES (1-5 items, <=25 words each)
 - Significant shortfalls. Omit if no clear weakness.
 
-RECOMMENDATIONS (1-5 items, <=25 words each)
+RECOMMENDATIONS (1-3 items, <=25 words each)
 - Actionable by player alone; avoid vague language. At least one should build on a listed strength.
 
 SCHEMA

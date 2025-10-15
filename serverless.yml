@@ -230,7 +230,7 @@ functions:
     timeout: 180
   deadlockAnalyst:
     handler: handlers/DeadlockAnalyst.handler
-    timeout: 180
+    timeout: 240
   embedTest:
     handler: handler.embedTest
 
