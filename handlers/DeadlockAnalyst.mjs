@@ -430,6 +430,7 @@ function preparePlayer(
     focus: isFocus,
     hero: heroName,
     team: player.team,
+    assigned_lane: player.assigned_lane,
     kills: player.kills,
     deaths: player.deaths,
     assists: player.assists,
@@ -1311,6 +1312,10 @@ ABILITY UPGRADES
 
 MAP & OBJECTIVES
 - The map has 3 lanes with 2v2 composition per lane.
+- Each player has an assigned_lane field indicating their starting lane assignment:
+  - Lane 1: Green lane
+  - Lane 4: Blue lane (middle lane)
+  - Lane 6: Yellow lane
 - Lane objectives (in order): Guardian (1 per lane) → Walker (1 per lane) → Base Guardians (2 per lane) → Shrines (2, shared) → Patron (2 phases, win condition).
 - Taking objectives grants team-wide benefits, map control, and Souls (primary currency).
 - Destroying enemy objectives unlocks additional flex slots for your team, allowing more items to be equipped.
@@ -1331,6 +1336,13 @@ ROLE ANALYSIS
 - Prioritize comparing the focus player against this role counterpart rather than raw team averages (e.g., carry vs carry, support vs support).
 - Role-specific comparisons provide more meaningful context for performance evaluation.
 - Frame strengths/weaknesses/recommendations according to the player's role and match context.
+
+LANE PHASE ANALYSIS
+- Use assigned_lane to identify lane opponents (enemy players with the same assigned_lane value).
+- For early game (first 10 minutes), compare the focus player's laning performance against their lane opponents.
+- Key laning metrics: last hits, denies, deaths, net worth - extract from stats_timeline entries with time_stamp_s <= 600.
+- Winning lane means outfarming opponents (higher last hits, net worth) and applying pressure (more denies, avoiding deaths).
+- Reference lane performance when analyzing early game strengths/weaknesses.
 
 TEAMFIGHTS
 - Teamfights are automatically detected based on clustered deaths (3+ deaths from both teams within ~75s and close proximity).
