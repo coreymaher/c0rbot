@@ -1,6 +1,6 @@
 "use strict";
 
-const Discord = require("../Discord");
+const Discord = require("../lib/Discord");
 const utils = require("../utils");
 
 const discord = new Discord();

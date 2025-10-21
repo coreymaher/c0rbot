@@ -6,7 +6,7 @@ const querystring = require("querystring");
 // Import cache as a dynamic import since it's an ESM module
 let cache;
 (async () => {
-  cache = (await import("./cache.mjs")).default;
+  cache = (await import("./lib/cache.mjs")).default;
 })();
 
 const SEVEN_DAYS = 7 * 24 * 60 * 60;

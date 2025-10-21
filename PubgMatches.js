@@ -6,7 +6,7 @@ const {
   ScanCommand,
   UpdateCommand,
 } = require("@aws-sdk/lib-dynamodb");
-const Discord = require("./Discord");
+const Discord = require("./lib/Discord");
 const PubgAPI = require("./PubgAPI");
 const ordinal = require("ordinal");
 

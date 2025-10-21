@@ -7,9 +7,9 @@ const {
   UpdateCommand,
 } = require("@aws-sdk/lib-dynamodb");
 const BigNumber = require("big-number");
-const Discord = require("./Discord");
-const DotaAPI = require("./DotaAPI");
-const DotaConstants = require("./DotaConstants");
+const Discord = require("./lib/Discord");
+const DotaAPI = require("./lib/DotaAPI");
+const DotaConstants = require("./lib/DotaConstants");
 
 const environment = JSON.parse(process.env.environment);
 

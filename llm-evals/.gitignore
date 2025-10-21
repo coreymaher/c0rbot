@@ -1,0 +1,9 @@
+# Evaluation results
+results/
+
+# API keys and environment files
+environment.js
+.env
+
+# Node modules (if any get added)
+node_modules/

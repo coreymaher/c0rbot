@@ -11,7 +11,7 @@ const request = require("request");
 const cheerio = require("cheerio");
 const crypto = require("crypto");
 
-const Discord = require("./Discord");
+const Discord = require("./lib/Discord");
 
 const client = new DynamoDBClient({});
 const discord = new Discord();

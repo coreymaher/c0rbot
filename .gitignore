@@ -1,3 +1,6 @@
 .serverless
 node_modules
 environment.js
+
+# LLM evaluation test results
+llm-evals/results/

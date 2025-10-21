@@ -10,12 +10,14 @@ import {
 const client = new DynamoDBClient({});
 const docClient = DynamoDBDocumentClient.from(client);
 
-import Discord from "../Discord.js";
+import Discord from "../lib/Discord.js";
 import { simpleGet } from "../utils.js";
-import * as constants from "../DeadlockConstants.mjs";
-import DeadlockAPI from "../DeadlockAPI.mjs";
+import * as constants from "../lib/DeadlockConstants.mjs";
+import DeadlockAPI from "../lib/DeadlockAPI.mjs";
+import cache from "../lib/cache.mjs";
 
 const discord = new Discord();
+const deadlockAPI = new DeadlockAPI(cache);
 
 const environment = JSON.parse(process.env.environment);
 discord.init(environment.discord);
@@ -91,7 +93,7 @@ async function handleMatch(match, user) {
   console.log(`Found match: ${match.match_id}`);
 
   // Always fetch match metadata to warm cache for analyst
-  const metadata = await DeadlockAPI.getMatchMetadata(match.match_id);
+  const metadata = await deadlockAPI.getMatchMetadata(match.match_id);
 
   // Skip matches with fewer than 2 real players (solo bot matches)
   if (metadata?.match_info?.players) {

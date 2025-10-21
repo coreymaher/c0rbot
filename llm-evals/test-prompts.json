@@ -1,0 +1,71 @@
+{
+  "timestamp": "2025-10-16T03:44:12.314Z",
+  "prompts": {
+    "dota": {
+      "match_id": "8510413698",
+      "account_id": "1900588",
+      "player_name": "c0rdawg",
+      "player_hero": "Undying",
+      "prompt": [
+        {
+          "role": "system",
+          "content": "You are a precise, non-speculative Dota 2 analyst. Use the supplied OpenDota data along with your knowledge of Dota 2.\nWrite concise, actionable insights about the specified player.\nRefer to the player by the provided player name.\nReturn ONLY one JSON object that matches the schema exactly-no extra keys, no surrounding text or code fences.\n\n[Rest of system prompt truncated for brevity in test output]"
+        },
+        {
+          "role": "system",
+          "content": "Popular Items for Undying by game phase (from last 100 professional matches):\n{\"early_game\":[\"Null Talisman\",\"Phase Boots\",\"Soul Ring\",\"Arcane Boots\",\"Bracer\",\"Helm of the Dominator\",\"Vitality Booster\",\"Power Treads\",\"Energy Booster\",\"Mekansm\"],\"mid_game\":[\"Arcane Boots\",\"Vitality Booster\",\"Blade Mail\",\"Shadow Amulet\",\"Vanguard\",\"Pipe of Insight\",\"Glimmer Cape\",\"Crimson Guard\",\"Pavise\",\"Point Booster\"],\"late_game\":[\"Blink Dagger\",\"Aghanim's Scepter\",\"Octarine Core\",\"Soul Booster\",\"Black King Bar\",\"Pipe of Insight\",\"Lotus Orb\",\"Guardian Greaves\",\"Force Staff\",\"Glimmer Cape\"]}"
+        },
+        {
+          "role": "user",
+          "content": "Analyze this match for player c0rdawg (ID: 1900588) playing Undying:\n\n{\n  \"durationSeconds\": 1921,\n  \"winningTeam\": \"dire\",\n  \"gameMode\": \"All Pick\",\n  \"playerName\": \"c0rdawg\",\n  \"playerAccountId\": 1900588,\n  \"playerHero\": \"Undying\",\n  \"playerTeam\": \"dire\",\n  \"kills\": 3,\n  \"deaths\": 4,\n  \"assists\": 31,\n  \"lastHits\": 82,\n  \"denies\": 3,\n  \"gpm\": 434,\n  \"xpm\": 658\n}"
+        }
+      ],
+      "compact_match": {
+        "durationSeconds": 1921,
+        "winningTeam": "dire",
+        "gameMode": "All Pick",
+        "playerName": "c0rdawg",
+        "playerAccountId": 1900588,
+        "playerHero": "Undying",
+        "playerTeam": "dire",
+        "kills": 3,
+        "deaths": 4,
+        "assists": 31,
+        "lastHits": 82,
+        "denies": 3,
+        "gpm": 434,
+        "xpm": 658
+      }
+    },
+    "deadlock": {
+      "match_id": "44981195",
+      "account_id": "1900588",
+      "player_name": "c0rdawg",
+      "player_hero": "Bebop",
+      "prompt": [
+        {
+          "role": "system",
+          "content": "You are a precise, non-speculative analyst for Deadlock, the third-person hero shooter MOBA by Valve.\nUse the supplied match data along with your knowledge of Deadlock.\nWrite concise, actionable insights about the specified player.\nRefer to the player by the provided player name.\nReturn ONLY one JSON object that matches the schema exactly-no extra keys, no surrounding text or code fences.\n\n[Rest of system prompt truncated for brevity in test output]"
+        },
+        {
+          "role": "user",
+          "content": "Analyze this Deadlock match for player c0rdawg playing Bebop:\n\n{\n  \"match_id\": 44981195,\n  \"duration_seconds\": 2546,\n  \"winning_team\": 1,\n  \"playerAccountId\": 1900588,\n  \"playerHero\": \"Bebop\",\n  \"playerTeam\": 1,\n  \"kills\": 13,\n  \"deaths\": 7,\n  \"assists\": 20,\n  \"netWorth\": 44101,\n  \"lastHits\": 148,\n  \"denies\": 8\n}"
+        }
+      ],
+      "compact_match": {
+        "match_id": 44981195,
+        "duration_seconds": 2546,
+        "winning_team": 1,
+        "playerAccountId": 1900588,
+        "playerHero": "Bebop",
+        "playerTeam": 1,
+        "kills": 13,
+        "deaths": 7,
+        "assists": 20,
+        "netWorth": 44101,
+        "lastHits": 148,
+        "denies": 8
+      }
+    }
+  }
+}

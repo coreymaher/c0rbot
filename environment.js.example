@@ -22,6 +22,12 @@ const environment = {
   },
   openai: {
     apikey: "API_KEY_HERE",
+  },
+  anthropic: {
+    apikey: "API_KEY_HERE",
+  },
+  gemini: {
+    apikey: "API_KEY_HERE",
   }
 };
 

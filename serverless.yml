@@ -5,7 +5,7 @@ provider:
   name: aws
   runtime: nodejs22.x
   timeout: 30
-  profile: c0rbot
+  region: us-east-1
   versionFunctions: false
   environment: ${file(environment.js):environment}
   iamRoleStatements:

@@ -6,7 +6,7 @@ const {
   ScanCommand,
   PutCommand,
 } = require("@aws-sdk/lib-dynamodb");
-const Discord = require("./Discord");
+const Discord = require("./lib/Discord");
 const FortniteAPI = require("./FortniteAPI");
 
 const environment = JSON.parse(process.env.environment);

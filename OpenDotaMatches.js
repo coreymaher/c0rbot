@@ -6,9 +6,9 @@ const {
   ScanCommand,
   UpdateCommand,
 } = require("@aws-sdk/lib-dynamodb");
-const Discord = require("./Discord");
+const Discord = require("./lib/Discord");
 const OpenDotaAPI = require("./OpenDotaAPI");
-const DotaConstants = require("./DotaConstants");
+const DotaConstants = require("./lib/DotaConstants");
 
 const environment = JSON.parse(process.env.environment);
 

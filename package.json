@@ -22,6 +22,7 @@
   },
   "scripts": {
     "decrypt": "sops -d environment.js.enc > environment.js",
+    "encrypt": "sops -e environment.js > environment.js.enc",
     "deploy": "npm run decrypt && serverless deploy"
   },
   "author": "",
