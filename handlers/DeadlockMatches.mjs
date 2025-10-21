@@ -230,12 +230,12 @@ export async function handler() {
       continue;
     }
 
-    const results = await Promise.all(
-      data
-        .slice(0, seenIndex)
-        .reverse()
-        .map(async (match) => await handleMatch(match, user)),
-    );
+    const newMatches = data.slice(0, seenIndex).reverse();
+    const results = [];
+    for (const match of newMatches) {
+      const result = await handleMatch(match, user);
+      results.push(result);
+    }
     const successful = results.some(({ error }) => !error);
 
     if (successful) {
