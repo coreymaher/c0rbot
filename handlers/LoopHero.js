@@ -15,9 +15,21 @@ module.exports.handler = async () => {
     "https://store.steampowered.com/events/ajaxgetadjacentpartnerevents/?clan_accountid=39322174&appid=1282730&count_after=3",
   );
 
+  if (!json) {
+    console.log("Failed to fetch data from Steam API (transient issue)");
+    return { message: "Failed to fetch data" };
+  }
+
   const patch_event_types = [12];
 
-  const data = JSON.parse(json);
+  let data;
+  try {
+    data = JSON.parse(json);
+  } catch (parseError) {
+    console.error("Failed to parse JSON response (likely HTML error page):", parseError.message);
+    console.error("Response preview:", json.substring(0, 200));
+    return { message: "Transient API error - skipping" };
+  }
   const event = data.events.find((item) =>
     patch_event_types.includes(item.event_type),
   );

@@ -28,7 +28,19 @@ module.exports.handler = async () => {
     },
   );
 
-  const data = JSON.parse(raw_data);
+  if (!raw_data) {
+    console.log("Failed to fetch data from Steam API (transient issue)");
+    return { message: "Failed to fetch data" };
+  }
+
+  let data;
+  try {
+    data = JSON.parse(raw_data);
+  } catch (parseError) {
+    console.error("Failed to parse JSON response (likely HTML error page):", parseError.message);
+    console.error("Response preview:", raw_data.substring(0, 200));
+    return { message: "Transient API error - skipping" };
+  }
   const event = data.events.find((event) =>
     [12, 14].includes(event.event_type),
   );
