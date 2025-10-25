@@ -23,8 +23,18 @@ function API() {
         if (err) {
           console.error(`request error ${url}:`);
           console.error(err);
+          return resolve([]);
         }
-        resolve(JSON.parse(body));
+
+        let data;
+        try {
+          data = JSON.parse(body);
+        } catch (parseError) {
+          console.error(`Failed to parse JSON response: ${parseError.message}. Response preview: ${body.substring(0, 200)}`);
+          return resolve([]);
+        }
+
+        resolve(data);
       });
     });
   }
