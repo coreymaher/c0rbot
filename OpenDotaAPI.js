@@ -19,10 +19,13 @@ function API() {
     const requestUrl = `${prefix}${url}?${querystring.stringify(params)}`;
 
     return new Promise((resolve, reject) => {
-      request(requestUrl, (err, response, body) => {
+      request({ url: requestUrl, timeout: 10000 }, (err, response, body) => {
         if (err) {
           console.error(`request error ${url}:`);
           console.error(err);
+          if (err.code === 'ETIMEDOUT' || err.code === 'ESOCKETTIMEDOUT') {
+            console.error(`Request timed out after 10 seconds for ${url}`);
+          }
           return resolve([]);
         }
 
