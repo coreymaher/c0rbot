@@ -177,11 +177,7 @@ export async function handler(event, context) {
     compactTimer.end();
 
     const analysisTimer = createTimer("AI analysis");
-    const analysis = await analyzeMatch(
-      compactMatch,
-      Number(player_id),
-      playerName,
-    );
+    const analysis = await analyzeMatch(compactMatch, playerName);
     analysisTimer.end();
 
     const analysisPayload = {
@@ -262,8 +258,8 @@ export async function handler(event, context) {
 
 // All business logic has been extracted to ../lib/DeadlockMatchProcessor.mjs
 
-async function analyzeMatch(compactMatch, playerId, playerName) {
-  const prompt = generateAnalysisPrompt(compactMatch, playerId, playerName);
+async function analyzeMatch(compactMatch, playerName) {
+  const prompt = generateAnalysisPrompt(compactMatch, playerName);
 
   console.log("Compact Match Data:", JSON.stringify(compactMatch, null, 2));
 

@@ -1,14 +1,14 @@
-import LLMClient from '../lib/LLMClient.mjs';
-import OpenDotaAPI from '../lib/OpenDotaAPI.mjs';
-import DeadlockAPI from '../lib/DeadlockAPI.mjs';
-import NoOpCache from './lib/NoOpCache.mjs';
-import DotaConstants from '../lib/DotaConstants.js';
-import * as DeadlockConstants from '../lib/DeadlockConstants.mjs';
-import { createRequire } from 'module';
+import LLMClient from "../lib/LLMClient.mjs";
+import OpenDotaAPI from "../lib/OpenDotaAPI.mjs";
+import DeadlockAPI from "../lib/DeadlockAPI.mjs";
+import NoOpCache from "./lib/NoOpCache.mjs";
+import DotaConstants from "../lib/DotaConstants.js";
+import * as DeadlockConstants from "../lib/DeadlockConstants.mjs";
+import { createRequire } from "module";
 
 // Load environment for API keys
 const require = createRequire(import.meta.url);
-const environmentConfig = require('../environment.js');
+const environmentConfig = require("../environment.js");
 const environment = JSON.parse(environmentConfig.environment().environment);
 
 // Create LLM client with API keys
@@ -21,14 +21,14 @@ import {
   generateCompactMatch as generateDeadlockCompactMatch,
   loadItems as loadDeadlockItems,
   generateAnalysisPrompt as generateDeadlockAnalysisPrompt,
-} from '../lib/DeadlockMatchProcessor.mjs';
+} from "../lib/DeadlockMatchProcessor.mjs";
 import {
   generateCompactMatch as generateDotaCompactMatch,
   generateAnalysisPrompt as generateDotaAnalysisPrompt,
-} from '../lib/DotaMatchProcessor.mjs';
-import fs from 'fs/promises';
-import path from 'path';
-import { fileURLToPath } from 'url';
+} from "../lib/DotaMatchProcessor.mjs";
+import fs from "fs/promises";
+import path from "path";
+import { fileURLToPath } from "url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -38,24 +38,24 @@ const deadlockAPI = new DeadlockAPI(NoOpCache);
 
 // Models to evaluate
 const MODELS = [
-  'gpt-5',
-  'claude-sonnet-4-5',
-  'gemini-2.5-pro',
-  'gemini-2.5-flash',
+  "gpt-5",
+  "claude-sonnet-4-5",
+  "gemini-2.5-pro",
+  "gemini-2.5-flash",
 ];
 
 // Pricing per million tokens (as of October 2025)
 // Source: Provider pricing pages
 const PRICING = {
-  'gpt-5': { input: 2.50, output: 10.00 },
-  'gpt-5-mini': { input: 0.40, output: 1.60 },
-  'gpt-5-nano': { input: 0.10, output: 0.40 },
-  'claude-opus-4-1': { input: 15.00, output: 75.00 },
-  'claude-sonnet-4-5': { input: 3.00, output: 15.00 },
-  'claude-haiku-4-5': { input: 0.80, output: 4.00 },
-  'gemini-2.5-pro': { input: 1.25, output: 5.00 },
-  'gemini-2.5-flash': { input: 0.075, output: 0.30 },
-  'gemini-2.5-flash-lite': { input: 0.0375, output: 0.15 },
+  "gpt-5": { input: 2.5, output: 10.0 },
+  "gpt-5-mini": { input: 0.4, output: 1.6 },
+  "gpt-5-nano": { input: 0.1, output: 0.4 },
+  "claude-opus-4-1": { input: 15.0, output: 75.0 },
+  "claude-sonnet-4-5": { input: 3.0, output: 15.0 },
+  "claude-haiku-4-5": { input: 0.8, output: 4.0 },
+  "gemini-2.5-pro": { input: 1.25, output: 5.0 },
+  "gemini-2.5-flash": { input: 0.075, output: 0.3 },
+  "gemini-2.5-flash-lite": { input: 0.0375, output: 0.15 },
 };
 
 /**
@@ -93,32 +93,32 @@ function parseArgs() {
     const value = args[i + 1];
 
     switch (flag) {
-      case '--account-id':
+      case "--account-id":
         parsed.accountId = value;
         break;
-      case '--dota-match-id':
+      case "--dota-match-id":
         // Single match ID (backward compatibility)
         parsed.dotaMatchIds = [value];
         break;
-      case '--dota-match-ids':
+      case "--dota-match-ids":
         // Multiple match IDs (comma-separated)
-        parsed.dotaMatchIds = value.split(',').map((id) => id.trim());
+        parsed.dotaMatchIds = value.split(",").map((id) => id.trim());
         break;
-      case '--deadlock-match-id':
+      case "--deadlock-match-id":
         // Single match ID (backward compatibility)
         parsed.deadlockMatchIds = [value];
         break;
-      case '--deadlock-match-ids':
+      case "--deadlock-match-ids":
         // Multiple match IDs (comma-separated)
-        parsed.deadlockMatchIds = value.split(',').map((id) => id.trim());
+        parsed.deadlockMatchIds = value.split(",").map((id) => id.trim());
         break;
-      case '--deadlock-name':
+      case "--deadlock-name":
         // Player name for Deadlock (API doesn't provide names)
         parsed.deadlockName = value;
         break;
-      case '--models':
+      case "--models":
         // Comma-separated list of models
-        parsed.models = value.split(',').map((model) => model.trim());
+        parsed.models = value.split(",").map((model) => model.trim());
         break;
       default:
         console.error(`Unknown flag: ${flag}`);
@@ -131,22 +131,30 @@ function parseArgs() {
   const hasDeadlock = parsed.deadlockMatchIds.length > 0 && parsed.accountId;
 
   if (!hasDota && !hasDeadlock) {
-    console.error('Error: Must provide --account-id and match ID(s) for at least one game');
-    console.error('Usage: node generate-eval.mjs --account-id ID [--dota-match-id ID | --dota-match-ids ID1,ID2,...] [--deadlock-match-id ID | --deadlock-match-ids ID1,ID2,...] [--deadlock-name NAME] [--models MODEL1,MODEL2,...]');
+    console.error(
+      "Error: Must provide --account-id and match ID(s) for at least one game",
+    );
+    console.error(
+      "Usage: node generate-eval.mjs --account-id ID [--dota-match-id ID | --dota-match-ids ID1,ID2,...] [--deadlock-match-id ID | --deadlock-match-ids ID1,ID2,...] [--deadlock-name NAME] [--models MODEL1,MODEL2,...]",
+    );
     process.exit(1);
   }
 
   // Validate Deadlock name is provided if Deadlock matches requested
   if (hasDeadlock && !parsed.deadlockName) {
-    console.error('Error: Must provide --deadlock-name when evaluating Deadlock matches');
-    console.error('(Deadlock API does not provide player names)');
+    console.error(
+      "Error: Must provide --deadlock-name when evaluating Deadlock matches",
+    );
+    console.error("(Deadlock API does not provide player names)");
     process.exit(1);
   }
 
   // Validate that all specified models are known (have pricing)
   for (const model of parsed.models) {
     if (!PRICING[model]) {
-      console.error(`Warning: Model '${model}' does not have pricing information`);
+      console.error(
+        `Warning: Model '${model}' does not have pricing information`,
+      );
     }
   }
 
@@ -167,7 +175,9 @@ async function generateDotaPrompt(matchId, accountId) {
     throw new Error(`Match ${matchId} has not been parsed by OpenDota`);
   }
 
-  const player = fullMatch.players.find((p) => p.account_id === Number(accountId));
+  const player = fullMatch.players.find(
+    (p) => p.account_id === Number(accountId),
+  );
   if (!player) {
     throw new Error(`Account ${accountId} not found in match ${matchId}`);
   }
@@ -179,17 +189,26 @@ async function generateDotaPrompt(matchId, accountId) {
   const compactMatch = generateDotaCompactMatch(fullMatch, Number(accountId));
 
   if (!compactMatch) {
-    throw new Error(`Failed to generate compact match data for match ${matchId}`);
+    throw new Error(
+      `Failed to generate compact match data for match ${matchId}`,
+    );
   }
 
   console.log(`✓ Generated compact match data`);
 
   // Use production generateAnalysisPrompt function (handles meta/items loading internally)
   console.log(`🔄 Generating analysis prompt...`);
-  const prompt = await generateDotaAnalysisPrompt(compactMatch, Number(accountId), playerName, fullMatch, {
-    cache: null, // No cache for evals
-    getHeroItemPopularity: openDotaAPI.getHeroItemPopularity.bind(openDotaAPI),
-  });
+  const prompt = await generateDotaAnalysisPrompt(
+    compactMatch,
+    Number(accountId),
+    playerName,
+    fullMatch,
+    {
+      cache: null, // No cache for evals
+      getHeroItemPopularity:
+        openDotaAPI.getHeroItemPopularity.bind(openDotaAPI),
+    },
+  );
 
   console.log(`✓ Generated analysis prompt`);
 
@@ -197,7 +216,9 @@ async function generateDotaPrompt(matchId, accountId) {
 }
 
 async function generateDeadlockPrompt(matchId, accountId, playerName) {
-  console.log(`\nFetching Deadlock match ${matchId} for ${playerName} (${accountId})...`);
+  console.log(
+    `\nFetching Deadlock match ${matchId} for ${playerName} (${accountId})...`,
+  );
 
   // Fetch match data
   const rawMatchData = await deadlockAPI.getMatchMetadata(matchId);
@@ -207,22 +228,30 @@ async function generateDeadlockPrompt(matchId, accountId, playerName) {
   }
 
   if (!rawMatchData.match_info) {
-    throw new Error(`Match data not available for match ${matchId} (missing match_info)`);
+    throw new Error(
+      `Match data not available for match ${matchId} (missing match_info)`,
+    );
   }
 
   const matchData = rawMatchData.match_info;
 
-  const player = matchData.players.find((p) => p.account_id === Number(accountId));
+  const player = matchData.players.find(
+    (p) => p.account_id === Number(accountId),
+  );
   if (!player) {
     throw new Error(`Account ${accountId} not found in match ${matchId}`);
   }
 
-  const playerHero = DeadlockConstants.heroes[player.hero_id]?.name || 'Unknown';
+  const playerHero =
+    DeadlockConstants.heroes[player.hero_id]?.name || "Unknown";
   console.log(`✓ Found player playing ${playerHero}`);
 
   // Load items data (required for generateCompactMatch)
   console.log(`🔄 Loading Deadlock items data...`);
-  const itemsData = await loadDeadlockItems({ cache: NoOpCache, skipCache: true });
+  const itemsData = await loadDeadlockItems({
+    cache: NoOpCache,
+    skipCache: true,
+  });
 
   if (!itemsData || !itemsData.byId || !itemsData.byClassName) {
     throw new Error(`Failed to load Deadlock items data`);
@@ -232,7 +261,9 @@ async function generateDeadlockPrompt(matchId, accountId, playerName) {
     throw new Error(`Deadlock items data is empty (0 items loaded)`);
   }
 
-  console.log(`✓ Loaded Deadlock items data (${Object.keys(itemsData.byId).length} items)`);
+  console.log(
+    `✓ Loaded Deadlock items data (${Object.keys(itemsData.byId).length} items)`,
+  );
 
   // Use production generateCompactMatch function
   console.log(`🔄 Generating compact match data...`);
@@ -243,14 +274,16 @@ async function generateDeadlockPrompt(matchId, accountId, playerName) {
   );
 
   if (!compactMatch) {
-    throw new Error(`Failed to generate compact match data for match ${matchId}`);
+    throw new Error(
+      `Failed to generate compact match data for match ${matchId}`,
+    );
   }
 
   console.log(`✓ Generated compact match data`);
 
   // Use production generateAnalysisPrompt function
   console.log(`🔄 Generating analysis prompt...`);
-  const prompt = generateDeadlockAnalysisPrompt(compactMatch, Number(accountId), playerName);
+  const prompt = generateDeadlockAnalysisPrompt(compactMatch, playerName);
 
   console.log(`✓ Generated analysis prompt`);
 
@@ -259,7 +292,7 @@ async function generateDeadlockPrompt(matchId, accountId, playerName) {
 
 async function runEvaluation(args) {
   const timestamp = new Date().toISOString();
-  const resultsDir = path.join(__dirname, 'results');
+  const resultsDir = path.join(__dirname, "results");
   await fs.mkdir(resultsDir, { recursive: true });
 
   const evaluation = {
@@ -278,7 +311,7 @@ async function runEvaluation(args) {
     );
     evaluation.matches.push({
       match_id: matchId,
-      game: 'dota',
+      game: "dota",
       account_id: args.accountId,
       player_name: playerName,
       prompt,
@@ -296,7 +329,7 @@ async function runEvaluation(args) {
     );
     evaluation.matches.push({
       match_id: matchId,
-      game: 'deadlock',
+      game: "deadlock",
       account_id: args.accountId,
       player_name: playerName,
       prompt,
@@ -307,9 +340,11 @@ async function runEvaluation(args) {
   // IMPORTANT: For each match, run all models
   // This ensures time between calls to the same model (prevents rate limiting)
   for (const match of evaluation.matches) {
-    console.log(`\n${'='.repeat(80)}`);
-    console.log(`Running evaluation for ${match.game.toUpperCase()} - Match ${match.match_id}`);
-    console.log('='.repeat(80));
+    console.log(`\n${"=".repeat(80)}`);
+    console.log(
+      `Running evaluation for ${match.game.toUpperCase()} - Match ${match.match_id}`,
+    );
+    console.log("=".repeat(80));
 
     for (const model of args.models) {
       console.log(`\nTesting ${model}...`);
@@ -331,7 +366,9 @@ async function runEvaluation(args) {
         });
 
         console.log(`  ✓ Completed in ${result.response_time_ms}ms`);
-        console.log(`  Tokens: ${result.usage.prompt_tokens} in / ${result.usage.completion_tokens} out`);
+        console.log(
+          `  Tokens: ${result.usage.prompt_tokens} in / ${result.usage.completion_tokens} out`,
+        );
         console.log(`  Cost: $${cost.toFixed(4)}`);
       } catch (err) {
         console.error(`  ✗ Failed: ${err.message}`);
@@ -353,14 +390,16 @@ async function runEvaluation(args) {
   }
 
   // Save results
-  const filename = `${timestamp.replace(/:/g, '-').replace(/\..+/, '')}.json`;
+  const filename = `${timestamp.replace(/:/g, "-").replace(/\..+/, "")}.json`;
   const filepath = path.join(resultsDir, filename);
   await fs.writeFile(filepath, JSON.stringify(evaluation, null, 2));
 
-  console.log(`\n${'='.repeat(80)}`);
-  console.log('EVALUATION COMPLETE');
-  console.log('='.repeat(80));
-  console.log(`Evaluated ${evaluation.matches.length} matches × ${args.models.length} models`);
+  console.log(`\n${"=".repeat(80)}`);
+  console.log("EVALUATION COMPLETE");
+  console.log("=".repeat(80));
+  console.log(
+    `Evaluated ${evaluation.matches.length} matches × ${args.models.length} models`,
+  );
   console.log(`Results saved to: ${filepath}`);
   console.log(`\nRun evaluation with:`);
   console.log(`  node evaluate-results.mjs ${filepath}`);
@@ -369,6 +408,6 @@ async function runEvaluation(args) {
 // Main execution
 const args = parseArgs();
 runEvaluation(args).catch((err) => {
-  console.error('Fatal error:', err);
+  console.error("Fatal error:", err);
   process.exit(1);
 });
