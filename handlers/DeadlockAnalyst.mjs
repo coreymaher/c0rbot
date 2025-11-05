@@ -168,11 +168,23 @@ export async function handler(event, context) {
     const itemsData = await loadItems({ cache });
     itemsTimer.end();
 
+    // Fetch popular items for meta context
+    const popularItemsTimer = createTimer("popular items loading");
+    const avgBadge = Math.round(
+      (matchData.average_badge_team0 + matchData.average_badge_team1) / 2,
+    );
+    const popularItemsData = await deadlockAPI.getPopularItems(
+      player.hero_id,
+      avgBadge,
+    );
+    popularItemsTimer.end();
+
     const compactTimer = createTimer("match data processing");
     const compactMatch = generateCompactMatch(
       matchData,
       Number(player_id),
       itemsData,
+      popularItemsData,
     );
     compactTimer.end();
 
