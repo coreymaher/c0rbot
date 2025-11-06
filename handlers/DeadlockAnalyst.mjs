@@ -20,7 +20,6 @@ const docClient = DynamoDBDocumentClient.from(dbClient);
 const deadlockAPI = new DeadlockAPI(cache);
 
 const cacheNamespace = "deadlock-ai-analyzer";
-const ONE_DAY = 24 * 60 * 60;
 
 const environment = JSON.parse(process.env.environment);
 
