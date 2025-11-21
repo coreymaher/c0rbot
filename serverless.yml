@@ -134,11 +134,11 @@ functions:
   steamUpdates:
     environment:
       table: feeds-${sls:stage}
-    handler: handler.steamUpdates
+    handler: handlers/SteamUpdates.handler
     events:
       - schedule:
-          rate: rate(5 minutes)
-          enabled: false
+          rate: rate(1 hour)
+          enabled: true
   fortniteMatches:
     environment:
       table: fortnite
