@@ -15,7 +15,7 @@ const games = [
     key: "dont-starve-together_updates",
     thumbnail:
       "https://vignette.wikia.nocookie.net/dont-starve-game/images/9/90/Don%27t_Starve_Together_Logo.png",
-    eventTypes: [12, 14, 28], // patches, updates, news
+    eventTypes: [12, 13, 14, 28], // patches, hotfixes, updates, news
   },
   {
     appid: 1808500,
@@ -23,7 +23,15 @@ const games = [
     key: "arc-raiders_updates",
     thumbnail:
       "https://cdn.cloudflare.steamstatic.com/steam/apps/1808500/logo.png",
-    eventTypes: [12, 14, 28], // patches, updates, news
+    eventTypes: [12, 13, 14, 28], // patches, hotfixes, updates, news
+  },
+  {
+    appid: 1757300,
+    name: "Jump Space",
+    key: "jump-space_updates",
+    thumbnail:
+      "https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1757300/f401ae1af25f31fdfed24f56cf98ea4a32d79997/header.jpg",
+    eventTypes: [12, 13, 14, 28], // patches, hotfixes, updates, news
   },
 ];
 
@@ -65,35 +73,53 @@ async function processGame(game) {
       return;
     }
 
-    // Find the first event matching the configured event types
-    const event = data.events?.find((event) =>
-      game.eventTypes.includes(event.event_type),
-    );
+    // Handle old string format or missing data - just start fresh
+    const lastSeenByType =
+      typeof db.Item?.feed_data === "object" ? db.Item.feed_data : {};
 
-    if (!event) return;
+    let hasNewEvents = false;
+    const updatedTracking = { ...lastSeenByType };
 
-    const gid = event.gid;
-    const title = event.event_name;
+    // Check each event type we're tracking
+    for (const eventType of game.eventTypes) {
+      // Find the latest event of this type
+      const latestEvent = data.events?.find(
+        (event) => event.event_type === eventType,
+      );
 
-    // Determine event type for display
-    let eventType = "news";
-    if (event.event_type === 12) eventType = "patch";
-    if (event.event_type === 14) eventType = "update";
+      if (!latestEvent) continue;
 
-    if (gid === db.Item?.feed_data) return;
+      const gid = latestEvent.gid;
+      const lastSeenGid = lastSeenByType[eventType.toString()];
 
-    const embed = {
-      title: `There is a new ${game.name} ${eventType}`,
-      description: title,
-      url: `https://store.steampowered.com/news/app/${game.appid}/view/${gid}`,
-      thumbnail: {
-        url: game.thumbnail,
-      },
-    };
+      // If we've seen this exact GID for this type, skip it
+      if (gid === lastSeenGid) continue;
 
-    const { discordError } = await discord.sendEmbed(embed, "updates");
-    if (!discordError) {
-      await updateFeedData(game.key, gid);
+      // New event! Determine display name
+      let eventTypeName = "news";
+      if (eventType === 12) eventTypeName = "patch";
+      if (eventType === 13) eventTypeName = "hotfix";
+      if (eventType === 14) eventTypeName = "update";
+
+      const embed = {
+        title: `There is a new ${game.name} ${eventTypeName}`,
+        description: latestEvent.event_name,
+        url: `https://store.steampowered.com/news/app/${game.appid}/view/${gid}`,
+        thumbnail: {
+          url: game.thumbnail,
+        },
+      };
+
+      const { discordError } = await discord.sendEmbed(embed, "updates");
+      if (!discordError) {
+        updatedTracking[eventType.toString()] = gid;
+        hasNewEvents = true;
+      }
+    }
+
+    // Save updated tracking if we posted any new events
+    if (hasNewEvents) {
+      await updateFeedData(game.key, updatedTracking);
     }
   } catch (error) {
     console.error(`Error processing ${game.name}:`, error.message);
