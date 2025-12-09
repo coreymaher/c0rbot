@@ -257,7 +257,9 @@ export async function handler(event, context) {
 
     // Provide detailed error info for admin users
     if (user_id === environment.discord.adminUserId) {
-      errorMessage = `**Admin Debug Info:**\n\`\`\`\nError: ${err.message}\nStack: ${err.stack}\nMatch ID: ${match_id}\nPlayer ID: ${player_id}\n\`\`\``;
+      const truncatedMessage = err.message.slice(0, 500);
+      const truncatedStack = err.stack.slice(0, 800);
+      errorMessage = `**Admin Debug Info:**\n\`\`\`\nError: ${truncatedMessage}\nStack: ${truncatedStack}\nMatch ID: ${match_id}\nPlayer ID: ${player_id}\n\`\`\``;
     }
 
     await discord.sendInteractionResponse(application_id, interaction_token, {
@@ -282,7 +284,7 @@ async function analyzeMatch(match, playerId, playerName, fullMatch) {
 
   console.log("Analyzing Match", { prompt });
 
-  const response = await llm.call(prompt, "gemini-2.5-pro");
+  const response = await llm.call(prompt, "gemini-2.5-flash");
 
   // Log token usage analytics
   if (response.usage) {
