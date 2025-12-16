@@ -2033,10 +2033,10 @@ domutils@^1.5.1:
     dom-serializer "0"
     domelementtype "1"
 
-dotaconstants@^9.5.0:
-  version "9.5.0"
-  resolved "https://registry.yarnpkg.com/dotaconstants/-/dotaconstants-9.5.0.tgz#b134c018f62e2b13edd97d1d5a1c2281d0cf3adc"
-  integrity sha512-D9qhzJ5d8h8tsOFETzkzAHVmE40RYV6jzwMElvvAlW61CiB6RqTY+TJQDOOhjWl5zqqw6Smew9gCIoD+hLdyEw==
+dotaconstants@^10.7.0:
+  version "10.7.0"
+  resolved "https://registry.yarnpkg.com/dotaconstants/-/dotaconstants-10.7.0.tgz#b5a79299ebcb362bf180d1bc347ece4b5358245a"
+  integrity sha512-k8UoigAmsjCyzUPD4Nj6sL/tLLsjfGa1dHFU9DjghZd6RErQdUAuLSJAFByK3gnTEaUnHZbNjBmYj+pqXtslNA==
 
 dotenv-expand@^9.0.0:
   version "9.0.0"

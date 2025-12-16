@@ -5,13 +5,13 @@
   "main": "handler.js",
   "dependencies": {
     "@aws-sdk/client-dynamodb": "^3.700.0",
-    "@aws-sdk/lib-dynamodb": "^3.700.0",
-    "@aws-sdk/client-scheduler": "^3.700.0",
     "@aws-sdk/client-lambda": "^3.700.0",
+    "@aws-sdk/client-scheduler": "^3.700.0",
+    "@aws-sdk/lib-dynamodb": "^3.700.0",
     "big-number": "^0.4.0",
     "cheerio": "^0.22.0",
     "crypto": "0.0.3",
-    "dotaconstants": "^9.5.0",
+    "dotaconstants": "^10.7.0",
     "ordinal": "^1.0.2",
     "protobufjs": "^6.8.6",
     "request": "^2.88.0"
