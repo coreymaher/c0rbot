@@ -33,6 +33,30 @@ const games = [
       "https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1757300/f401ae1af25f31fdfed24f56cf98ea4a32d79997/header.jpg",
     eventTypes: [12, 13, 14, 28], // patches, hotfixes, updates, news
   },
+  {
+    appid: 251570,
+    name: "7 Days to Die",
+    key: "7-days-to-die_updates",
+    thumbnail:
+      "https://cdn.cloudflare.steamstatic.com/steam/apps/251570/logo.png",
+    eventTypes: [12, 13, 14, 28], // patches, hotfixes, updates, news
+  },
+  {
+    appid: 739630,
+    name: "Phasmophobia",
+    key: "phasmophobia_updates",
+    thumbnail:
+      "https://cdn.cloudflare.steamstatic.com/steam/apps/739630/logo.png",
+    eventTypes: [12, 13, 14, 28], // patches, hotfixes, updates, news
+  },
+  {
+    appid: 1943950,
+    name: "Escape the Backrooms",
+    key: "escape-the-backrooms_updates",
+    thumbnail:
+      "https://cdn.cloudflare.steamstatic.com/steam/apps/1943950/logo.png",
+    eventTypes: [12, 13, 14, 28], // patches, hotfixes, updates, news
+  },
 ];
 
 async function processGame(game) {
