@@ -9,7 +9,9 @@ const {
 const BigNumber = require("big-number");
 const Discord = require("./lib/Discord");
 const DotaAPI = require("./lib/DotaAPI");
-const DotaConstants = require("./lib/DotaConstants");
+
+// Loaded dynamically since DotaConstants is now ESM
+let DotaConstants;
 
 const environment = JSON.parse(process.env.environment);
 
@@ -233,14 +235,19 @@ function updateDB(data) {
   });
 }
 
-module.exports = (event, context, callback) => {
+module.exports = async (event, context, callback) => {
+  // Load ESM module dynamically
+  if (!DotaConstants) {
+    DotaConstants = (await import("./lib/DotaConstants.mjs")).default;
+  }
+
   const sharedData = {
     dbUsers: [],
     users: {},
     matches: {},
   };
 
-  loadDBUsers(sharedData)
+  return loadDBUsers(sharedData)
     .then(loadRecentMatches)
     .then(loadUsers)
     .then(loadMatches)

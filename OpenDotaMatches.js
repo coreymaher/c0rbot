@@ -8,7 +8,9 @@ const {
 } = require("@aws-sdk/lib-dynamodb");
 const Discord = require("./lib/Discord");
 const OpenDotaAPI = require("./OpenDotaAPI");
-const DotaConstants = require("./lib/DotaConstants");
+
+// Loaded dynamically since DotaConstants is now ESM
+let DotaConstants;
 
 const environment = JSON.parse(process.env.environment);
 
@@ -358,7 +360,12 @@ function updateDB(data) {
   });
 }
 
-module.exports = (event, context, callback) => {
+module.exports = async (event, context, callback) => {
+  // Load ESM module dynamically
+  if (!DotaConstants) {
+    DotaConstants = (await import("./lib/DotaConstants.mjs")).default;
+  }
+
   const sharedData = {
     dbUsers: [],
     config: {},
@@ -366,7 +373,7 @@ module.exports = (event, context, callback) => {
     matches: {},
   };
 
-  loadDBUsers(sharedData)
+  return loadDBUsers(sharedData)
     .then(loadConfig)
     .then(loadRecentMatches)
     .then(loadPlayers)

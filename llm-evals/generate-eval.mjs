@@ -2,7 +2,7 @@ import LLMClient from "../lib/LLMClient.mjs";
 import OpenDotaAPI from "../lib/OpenDotaAPI.mjs";
 import DeadlockAPI from "../lib/DeadlockAPI.mjs";
 import NoOpCache from "./lib/NoOpCache.mjs";
-import DotaConstants from "../lib/DotaConstants.js";
+import DotaConstants from "../lib/DotaConstants.mjs";
 import * as DeadlockConstants from "../lib/DeadlockConstants.mjs";
 import { createRequire } from "module";
 

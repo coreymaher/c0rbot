@@ -4,7 +4,7 @@ import Discord from "../lib/Discord.js";
 import cache from "../lib/cache.mjs";
 import OpenDotaAPI from "../lib/OpenDotaAPI.mjs";
 import LLMClient from "../lib/LLMClient.mjs";
-import DotaConstants from "../lib/DotaConstants.js";
+import DotaConstants from "../lib/DotaConstants.mjs";
 import {
   processPopularItems,
   generateCompactMatch,
