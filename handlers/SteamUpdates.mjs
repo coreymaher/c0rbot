@@ -14,7 +14,7 @@ const games = [
     name: "Don't Starve Together",
     key: "dont-starve-together_updates",
     thumbnail:
-      "https://vignette.wikia.nocookie.net/dont-starve-game/images/9/90/Don%27t_Starve_Together_Logo.png",
+      "https://cdn.cloudflare.steamstatic.com/steam/apps/322330/header.jpg",
     eventTypes: [12, 13, 14, 28], // patches, hotfixes, updates, news
   },
   {
@@ -22,7 +22,7 @@ const games = [
     name: "ARC Raiders",
     key: "arc-raiders_updates",
     thumbnail:
-      "https://cdn.cloudflare.steamstatic.com/steam/apps/1808500/logo.png",
+      "https://cdn.cloudflare.steamstatic.com/steam/apps/1808500/header.jpg",
     eventTypes: [12, 13, 14, 28], // patches, hotfixes, updates, news
   },
   {
@@ -30,7 +30,7 @@ const games = [
     name: "Jump Space",
     key: "jump-space_updates",
     thumbnail:
-      "https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1757300/f401ae1af25f31fdfed24f56cf98ea4a32d79997/header.jpg",
+      "https://cdn.cloudflare.steamstatic.com/steam/apps/1757300/header.jpg",
     eventTypes: [12, 13, 14, 28], // patches, hotfixes, updates, news
   },
   {
@@ -38,7 +38,7 @@ const games = [
     name: "7 Days to Die",
     key: "7-days-to-die_updates",
     thumbnail:
-      "https://cdn.cloudflare.steamstatic.com/steam/apps/251570/logo.png",
+      "https://cdn.cloudflare.steamstatic.com/steam/apps/251570/header.jpg",
     eventTypes: [12, 13, 14, 28], // patches, hotfixes, updates, news
   },
   {
@@ -46,7 +46,7 @@ const games = [
     name: "Phasmophobia",
     key: "phasmophobia_updates",
     thumbnail:
-      "https://cdn.cloudflare.steamstatic.com/steam/apps/739630/logo.png",
+      "https://cdn.cloudflare.steamstatic.com/steam/apps/739630/header.jpg",
     eventTypes: [12, 13, 14, 28], // patches, hotfixes, updates, news
   },
   {
@@ -54,7 +54,7 @@ const games = [
     name: "Escape the Backrooms",
     key: "escape-the-backrooms_updates",
     thumbnail:
-      "https://cdn.cloudflare.steamstatic.com/steam/apps/1943950/logo.png",
+      "https://cdn.cloudflare.steamstatic.com/steam/apps/1943950/header.jpg",
     eventTypes: [12, 13, 14, 28], // patches, hotfixes, updates, news
   },
 ];
