@@ -254,7 +254,8 @@ export async function handler(event, context) {
 
     // Provide detailed error info for admin users
     if (user_id === environment.discord.adminUserId) {
-      errorMessage = `**Admin Debug Info:**\n\`\`\`\nError: ${err.message}\nStack: ${err.stack}\nMatch ID: ${match_id}\nPlayer ID: ${player_id}\n\`\`\``;
+      const errMsg = err.message?.slice(0, 500) || "Unknown error";
+      errorMessage = `**Admin Debug Info:**\n\`\`\`\nError: ${errMsg}\nMatch ID: ${match_id}\nPlayer ID: ${player_id}\n\`\`\``;
     }
 
     await discord.sendInteractionResponse(application_id, interaction_token, {
@@ -274,7 +275,7 @@ async function analyzeMatch(compactMatch, playerName) {
 
   console.log("Compact Match Data:", JSON.stringify(compactMatch, null, 2));
 
-  const response = await llm.call(prompt, "gemini-2.5-pro");
+  const response = await llm.call(prompt, "gemini-2.5-flash");
 
   // Log token usage analytics
   if (response.usage) {

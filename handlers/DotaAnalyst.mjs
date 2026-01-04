@@ -257,9 +257,8 @@ export async function handler(event, context) {
 
     // Provide detailed error info for admin users
     if (user_id === environment.discord.adminUserId) {
-      const truncatedMessage = err.message.slice(0, 500);
-      const truncatedStack = err.stack.slice(0, 800);
-      errorMessage = `**Admin Debug Info:**\n\`\`\`\nError: ${truncatedMessage}\nStack: ${truncatedStack}\nMatch ID: ${match_id}\nPlayer ID: ${player_id}\n\`\`\``;
+      const errMsg = err.message?.slice(0, 500) || "Unknown error";
+      errorMessage = `**Admin Debug Info:**\n\`\`\`\nError: ${errMsg}\nMatch ID: ${match_id}\nPlayer ID: ${player_id}\n\`\`\``;
     }
 
     await discord.sendInteractionResponse(application_id, interaction_token, {
