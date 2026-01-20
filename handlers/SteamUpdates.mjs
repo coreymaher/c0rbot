@@ -88,6 +88,14 @@ const games = [
       "https://cdn.cloudflare.steamstatic.com/steam/apps/427410/header.jpg",
     eventTypes: DEFAULT_EVENT_TYPES,
   },
+  {
+    appid: 427520,
+    name: "Factorio",
+    key: "factorio_updates",
+    thumbnail:
+      "https://cdn.cloudflare.steamstatic.com/steam/apps/427520/header.jpg",
+    eventTypes: DEFAULT_EVENT_TYPES,
+  },
 ];
 
 async function processGame(game) {
