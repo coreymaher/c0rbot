@@ -111,7 +111,9 @@ async function handleMatch(match, user) {
   const result = match.match_result === match.player_team ? "won" : "lost";
   const hero = constants.heroes[match.hero_id];
 
-  const description = `${user.name} ${result} a Deadlock match as ${hero.name}`;
+  const gameMode = metadata?.match_info?.game_mode;
+  const matchType = gameMode === 4 ? "street brawl" : "match";
+  const description = `${user.name} ${result} a Deadlock ${matchType} as ${hero.name}`;
   const fields = [];
 
   fields.push({
