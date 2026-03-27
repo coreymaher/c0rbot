@@ -11,7 +11,7 @@
     "big-number": "^0.4.0",
     "cheerio": "^0.22.0",
     "crypto": "0.0.3",
-    "dotaconstants": "^10.7.0",
+    "dotaconstants": "^10.8.0",
     "ordinal": "^1.0.2",
     "protobufjs": "^6.8.6",
     "request": "^2.88.0"
