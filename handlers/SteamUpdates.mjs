@@ -96,6 +96,14 @@ const games = [
       "https://cdn.cloudflare.steamstatic.com/steam/apps/427520/header.jpg",
     eventTypes: DEFAULT_EVENT_TYPES,
   },
+  {
+    appid: 2868840,
+    name: "Slay the Spire 2",
+    key: "slay-the-spire-2_updates",
+    thumbnail:
+      "https://cdn.cloudflare.steamstatic.com/steam/apps/2868840/header.jpg",
+    eventTypes: DEFAULT_EVENT_TYPES,
+  },
 ];
 
 async function processGame(game) {
