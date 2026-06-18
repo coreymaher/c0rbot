@@ -32,11 +32,10 @@ function loadEnvironment(): { environment: string } {
   }
 }
 
-// New clean table names (the `-dev` stage suffix is dropped on the two that
-// had it). These are the 6 tables defined in the old serverless.yml resources.
+// DynamoDB table names.
 const TABLE = {
-  feeds: "feeds", // was feeds-dev
-  dotaPlayers: "dota-players", // was dota-players-dev
+  feeds: "feeds",
+  dotaPlayers: "dota-players",
   fortnite: "fortnite",
   matches: "matches",
   config: "config",
@@ -53,14 +52,14 @@ interface ScheduleDef {
 
 interface FunctionDef {
   name: string; // short name -> c0rbot-<name>
-  handler: string; // copied verbatim from serverless.yml
+  handler: string; // module path -> export, e.g. "handler.redditFeed"
   table?: string; // primary table -> process.env.table
   timeoutSeconds?: number; // default 30
   schedule?: ScheduleDef;
   url?: boolean;
 }
 
-// Mirrors serverless.yml functions 1:1 (rates, enabled flags, timeouts, tables).
+// All Lambda functions and their schedules, timeouts, and primary tables.
 const FUNCTIONS: FunctionDef[] = [
   {
     name: "redditFeed",
@@ -281,7 +280,7 @@ export class c0rbotStack extends Stack {
       },
     });
 
-    // --- Shared Lambda execution role (mirrors the single serverless provider role) ---
+    // --- Shared Lambda execution role ---
     const execRole = new iam.Role(this, "LambdaExecutionRole", {
       assumedBy: new iam.ServicePrincipal("lambda.amazonaws.com"),
       managedPolicies: [
@@ -323,8 +322,8 @@ export class c0rbotStack extends Stack {
       }),
     );
 
-    // Shared deployment asset: zip the whole project (incl. node_modules), like
-    // serverless v3. No esbuild, so the mixed .js/.mjs handlers run untouched.
+    // Shared deployment asset: zip the whole project (incl. node_modules). No
+    // esbuild, so the mixed .js/.mjs handlers run untouched.
     const code = lambda.Code.fromAsset(path.join(__dirname, ".."), {
       exclude: [
         "cdk.out",
