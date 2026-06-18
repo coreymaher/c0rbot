@@ -194,7 +194,7 @@ const FUNCTIONS: FunctionDef[] = [
   { name: "embedTest", handler: "handler.embedTest" },
 ];
 
-export class C0rbotStack extends Stack {
+export class c0rbotStack extends Stack {
   constructor(scope: Construct, id: string, props?: StackProps) {
     super(scope, id, props);
 
