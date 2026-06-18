@@ -7,6 +7,7 @@ import cache from "../lib/cache.mjs";
 import LLMClient from "../lib/LLMClient.mjs";
 import * as DeadlockConstants from "../lib/DeadlockConstants.mjs";
 import DeadlockAPI from "../lib/DeadlockAPI.mjs";
+import tables from "../lib/tables.js";
 import {
   loadItems,
   generateCompactMatch,
@@ -38,7 +39,7 @@ async function getPlayerName(player_id) {
   try {
     const result = await docClient.send(
       new GetCommand({
-        TableName: "matches",
+        TableName: tables.matches,
         Key: {
           player_id: String(player_id),
           game: "deadlock",

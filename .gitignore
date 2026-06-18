@@ -4,3 +4,6 @@ environment.js
 
 # LLM evaluation test results
 llm-evals/results/
+
+# CDK
+cdk.out

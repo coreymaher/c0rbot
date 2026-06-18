@@ -93,11 +93,11 @@ export async function handler(event) {
 
   if (action === "ai" || action === "reanalyze") {
     // Dota
-    functionName = "reddit-dev-dotaAnalyst";
+    functionName = process.env.DOTA_ANALYST_FN;
     isReanalyze = action === "reanalyze";
   } else if (action === "ai_dl" || action === "reanalyze_dl") {
     // Deadlock
-    functionName = "reddit-dev-deadlockAnalyst";
+    functionName = process.env.DEADLOCK_ANALYST_FN;
     isReanalyze = action === "reanalyze_dl";
   } else {
     return makeResponse({

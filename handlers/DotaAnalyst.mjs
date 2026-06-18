@@ -275,10 +275,17 @@ export async function handler(event, context) {
 
 async function analyzeMatch(match, playerId, playerName, fullMatch) {
   const promptTimer = createTimer("prompt generation");
-  const prompt = await generateAnalysisPrompt(match, playerId, playerName, fullMatch, {
-    cache,
-    getHeroItemPopularity: openDotaAPI.getHeroItemPopularity.bind(openDotaAPI),
-  });
+  const prompt = await generateAnalysisPrompt(
+    match,
+    playerId,
+    playerName,
+    fullMatch,
+    {
+      cache,
+      getHeroItemPopularity:
+        openDotaAPI.getHeroItemPopularity.bind(openDotaAPI),
+    },
+  );
   promptTimer.end();
 
   console.log("Analyzing Match", { prompt });
@@ -320,10 +327,7 @@ async function scheduleRetryAnalysis(eventPayload, context) {
         Description: `Retry analysis for match ${match_id} player ${player_id}`,
         Target: {
           Arn: context.invokedFunctionArn,
-          RoleArn: context.invokedFunctionArn
-            .replace("lambda:us-east-1", "iam:")
-            .replace(":function:", ":role/")
-            .replace("reddit-dev-dotaAnalyst", "reddit-dev-scheduler-role"),
+          RoleArn: process.env.SCHEDULER_ROLE_ARN,
           Input: JSON.stringify(eventPayload),
         },
         FlexibleTimeWindow: {

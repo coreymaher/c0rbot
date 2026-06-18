@@ -17,13 +17,21 @@
     "request": "^2.88.0"
   },
   "devDependencies": {
+    "@types/node": "^22.10.0",
+    "aws-cdk": "^2.170.0",
+    "aws-cdk-lib": "^2.170.0",
+    "constructs": "^10.4.0",
     "prettier": "^3.6.2",
-    "serverless": "^3.28.1"
+    "serverless": "^3.28.1",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.7.2"
   },
   "scripts": {
     "decrypt": "sops -d environment.js.enc > environment.js",
     "encrypt": "sops -e environment.js > environment.js.enc",
-    "deploy": "npm run decrypt && serverless deploy"
+    "synth": "npm run decrypt && cdk synth",
+    "diff": "npm run decrypt && cdk diff",
+    "deploy": "npm run decrypt && cdk deploy"
   },
   "author": "",
   "license": "ISC"
