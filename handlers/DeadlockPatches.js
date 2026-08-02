@@ -50,7 +50,7 @@ module.exports.handler = async () => {
     fields: fields,
   };
 
-  const { discordError } = await discord.sendEmbed(embed, "updates");
+  const { error: discordError } = await discord.sendEmbed(embed, "updates");
   if (!discordError) {
     await utils.updateFeedData(feed_name, guid);
   }
