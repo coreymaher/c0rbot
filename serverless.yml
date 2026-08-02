@@ -213,14 +213,6 @@ functions:
       - schedule:
           rate: rate(1 hour)
           enabled: true
-  dotaNews:
-    environment:
-      table: feeds-${sls:stage}
-    handler: handlers/DotaNews.handler
-    events:
-      - schedule:
-          rate: rate(1 hour)
-          enabled: true
   discordWebhookHandler:
     handler: handlers/DiscordWebhookHandler.handler
     url:

@@ -104,6 +104,16 @@ const games = [
       "https://cdn.cloudflare.steamstatic.com/steam/apps/2868840/header.jpg",
     eventTypes: DEFAULT_EVENT_TYPES,
   },
+  {
+    appid: 570,
+    name: "Dota 2",
+    key: "dota2_news",
+    thumbnail:
+      "https://cdn.cloudflare.steamstatic.com/steam/apps/570/header.jpg",
+    eventTypes: DEFAULT_EVENT_TYPES,
+    // Valve serves these posts by gid on dota2.com too
+    newsUrl: (gid) => `https://www.dota2.com/newsentry/${gid}`,
+  },
 ];
 
 async function processGame(game) {
@@ -153,30 +163,57 @@ async function processGame(game) {
 
     // Check each event type we're tracking
     for (const eventType of game.eventTypes) {
-      // Find the latest event of this type
-      const latestEvent = data.events?.find(
+      // Steam returns events newest-first, so the stored gid acts as a
+      // watermark: everything above it in the list is still unposted.
+      const typeEvents = (data.events ?? []).filter(
         (event) => event.event_type === eventType.id,
       );
 
-      if (!latestEvent) continue;
+      if (typeEvents.length === 0) continue;
 
-      const gid = latestEvent.gid;
       const lastSeenGid = lastSeenByType[eventType.id.toString()];
+      const lastSeenIndex = typeEvents.findIndex(
+        (event) => event.gid === lastSeenGid,
+      );
 
-      // If we've seen this exact GID for this type, skip it
-      if (gid === lastSeenGid) continue;
+      // No watermark in view - either a first run or we've fallen behind the
+      // fetch window. Post only the newest so we can't flood the channel.
+      const pending =
+        lastSeenIndex === -1
+          ? typeEvents.slice(0, 1)
+          : typeEvents.slice(0, lastSeenIndex);
 
-      const embed = {
-        title: `There is a new ${game.name} ${eventType.name}`,
-        description: latestEvent.event_name,
-        url: `https://store.steampowered.com/news/app/${game.appid}/view/${gid}`,
-        thumbnail: {
-          url: game.thumbnail,
-        },
-      };
+      // Oldest first, so a failed send leaves the watermark on the last event
+      // we actually posted and the rest retry on the next run.
+      for (const event of pending.reverse()) {
+        const gid = event.gid;
 
-      const { discordError } = await discord.sendEmbed(embed, "updates");
-      if (!discordError) {
+        console.log(
+          `new item: ${game.name} - ${eventType.name}(${eventType.id}) - ${gid} - ${event.event_name}`,
+        );
+
+        const embed = {
+          title: `There is a new ${game.name} ${eventType.name}`,
+          description: event.event_name,
+          url: game.newsUrl
+            ? game.newsUrl(gid)
+            : `https://store.steampowered.com/news/app/${game.appid}/view/${gid}`,
+          thumbnail: {
+            url: game.thumbnail,
+          },
+        };
+
+        const { error: discordError } = await discord.sendEmbed(
+          embed,
+          "updates",
+        );
+        if (discordError) {
+          console.error(
+            `failed to post ${game.name} - ${eventType.name}(${eventType.id}) - ${gid}`,
+          );
+          break;
+        }
+
         updatedTracking[eventType.id.toString()] = gid;
         hasNewEvents = true;
       }
