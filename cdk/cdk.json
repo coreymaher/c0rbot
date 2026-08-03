@@ -1,5 +1,5 @@
 {
-  "app": "npx ts-node --prefer-ts-exts bin/c0rbot.ts",
+  "app": "npx tsc && npx tsx bin/c0rbot.ts",
   "output": "cdk.out",
   "context": {
     "@aws-cdk/aws-lambda:recognizeLayerVersion": true,

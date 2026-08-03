@@ -113,6 +113,26 @@ const games = [
     eventTypes: DEFAULT_EVENT_TYPES,
   },
   {
+    // Point releases (6.45, 6.45.1) come from the RSS feed in NoMansSky.mjs, which
+    // Steam does not carry. Steam has the other half: the marquee update posts, which
+    // carry no version number and so cannot be picked out of that feed. Type 14 is
+    // exactly those -- type 28 here is anniversaries and plushie announcements.
+    appid: 275850,
+    name: "No Man's Sky",
+    key: "no-mans-sky_updates",
+    thumbnail:
+      "https://cdn.cloudflare.steamstatic.com/steam/apps/275850/header.jpg",
+    eventTypes: [EventType.MAJOR_UPDATE],
+  },
+  {
+    appid: 1422450,
+    name: "Deadlock",
+    key: "deadlock_updates",
+    thumbnail:
+      "https://cdn.cloudflare.steamstatic.com/steam/apps/1422450/header.jpg",
+    eventTypes: DEFAULT_EVENT_TYPES,
+  },
+  {
     appid: 570,
     name: "Dota 2",
     key: "dota2_news",

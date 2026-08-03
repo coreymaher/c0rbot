@@ -361,7 +361,7 @@ function updateDB(data) {
   });
 }
 
-module.exports = async (event, context, callback) => {
+module.exports = async () => {
   // Load ESM module dynamically
   if (!DotaConstants) {
     DotaConstants = (await import("./lib/DotaConstants.mjs")).default;
@@ -381,7 +381,5 @@ module.exports = async (event, context, callback) => {
     .then(loadMatches)
     .then(sendDiscordMessage)
     .then(updateDB)
-    .then(() => {
-      callback(null, { message: "Done" });
-    });
+    .then(() => ({ message: "Done" }));
 };
