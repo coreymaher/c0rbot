@@ -105,6 +105,14 @@ const games = [
     eventTypes: DEFAULT_EVENT_TYPES,
   },
   {
+    appid: 892970,
+    name: "Valheim",
+    key: "valheim_updates",
+    thumbnail:
+      "https://cdn.cloudflare.steamstatic.com/steam/apps/892970/header.jpg",
+    eventTypes: DEFAULT_EVENT_TYPES,
+  },
+  {
     appid: 570,
     name: "Dota 2",
     key: "dota2_news",
