@@ -8,6 +8,7 @@ import * as targets from "aws-cdk-lib/aws-events-targets";
 import * as iam from "aws-cdk-lib/aws-iam";
 import * as lambda from "aws-cdk-lib/aws-lambda";
 import { NodejsFunction, OutputFormat } from "aws-cdk-lib/aws-lambda-nodejs";
+import * as logs from "aws-cdk-lib/aws-logs";
 
 const REPO_ROOT = path.resolve(__dirname, "..", "..");
 const ENV_FILE = path.join(REPO_ROOT, "environment.js");
@@ -95,6 +96,13 @@ export class C0rbotStack extends cdk.Stack {
         handler: "handler",
         runtime: lambda.Runtime.NODEJS_22_X,
         memorySize: 1024,
+        // Declared, because the group Lambda creates implicitly is unmanaged and
+        // never expires. The name is pinned: a generated one breaks `aws logs tail`.
+        logGroup: new logs.LogGroup(this, `${name}LogGroup`, {
+          logGroupName: `/aws/lambda/c0rbot-${name}`,
+          retention: logs.RetentionDays.ONE_YEAR,
+          removalPolicy: cdk.RemovalPolicy.RETAIN,
+        }),
         timeout: cdk.Duration.seconds(opts.timeout ?? 30),
         environment: {
           ...secrets,
