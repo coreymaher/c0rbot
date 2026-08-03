@@ -22,8 +22,8 @@
   "scripts": {
     "decrypt": "sops -d environment.js.enc > environment.js",
     "encrypt": "sops -e environment.js > environment.js.enc",
-    "deploy": "npm run decrypt && cd cdk && cdk deploy",
-    "synth": "npm run decrypt && cd cdk && cdk synth"
+    "deploy": "npm run decrypt && cd cdk && npx cdk deploy",
+    "synth": "npm run decrypt && cd cdk && npx cdk synth"
   },
   "author": "",
   "license": "ISC",
