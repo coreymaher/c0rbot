@@ -82,8 +82,6 @@ export class C0rbotStack extends cdk.Stack {
       sortKey: str("key"),
       timeToLiveAttribute: "expires_at",
     });
-    // No live function uses this one, but it holds data and should stay managed.
-    table("FortniteTable", "fortnite", str("name"), 1);
 
     // Built from the role name rather than the Role object to avoid a cycle: the
     // role's policy needs the analyst ARN, and the analyst's env needs the role ARN.
