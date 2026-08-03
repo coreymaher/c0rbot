@@ -1,6 +1,5 @@
 "use strict";
 
-const request = require("request");
 const querystring = require("querystring");
 
 // Import cache as a dynamic import since it's an ESM module
@@ -13,33 +12,42 @@ const SEVEN_DAYS = 7 * 24 * 60 * 60;
 
 function API() {
   const prefix = "https://api.opendota.com/api/";
-  function getRequest(url, params) {
+  // Resolves [] rather than throwing on any failure: a poll that misses one player
+  // should not take down the whole run.
+  async function getRequest(url, params) {
     params = params ? params : {};
 
     const requestUrl = `${prefix}${url}?${querystring.stringify(params)}`;
 
-    return new Promise((resolve, reject) => {
-      request({ url: requestUrl, timeout: 10000 }, (err, response, body) => {
-        if (err) {
-          console.error(`request error ${url}:`);
-          console.error(err);
-          if (err.code === 'ETIMEDOUT' || err.code === 'ESOCKETTIMEDOUT') {
-            console.error(`Request timed out after 10 seconds for ${url}`);
-          }
-          return resolve([]);
-        }
-
-        let data;
-        try {
-          data = JSON.parse(body);
-        } catch (parseError) {
-          console.error(`Failed to parse JSON response: ${parseError.message}. Response preview: ${body.substring(0, 200)}`);
-          return resolve([]);
-        }
-
-        resolve(data);
+    let body;
+    try {
+      const response = await fetch(requestUrl, {
+        signal: AbortSignal.timeout(10000),
       });
-    });
+
+      if (!response.ok) {
+        console.error(`request error ${url}: HTTP ${response.status}`);
+        return [];
+      }
+
+      body = await response.text();
+    } catch (err) {
+      console.error(`request error ${url}:`);
+      console.error(err);
+      if (err.name === "TimeoutError") {
+        console.error(`Request timed out after 10 seconds for ${url}`);
+      }
+      return [];
+    }
+
+    try {
+      return JSON.parse(body);
+    } catch (parseError) {
+      console.error(
+        `Failed to parse JSON response: ${parseError.message}. Response preview: ${body.substring(0, 200)}`,
+      );
+      return [];
+    }
   }
 
   async function getMatch(matchID) {
