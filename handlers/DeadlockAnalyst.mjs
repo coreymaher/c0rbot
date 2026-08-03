@@ -12,6 +12,7 @@ import {
   generateCompactMatch,
   generateAnalysisPrompt,
 } from "../lib/DeadlockMatchProcessor.mjs";
+import tables from "../lib/tables.js";
 
 const dbClient = new DynamoDBClient({});
 const docClient = DynamoDBDocumentClient.from(dbClient);
@@ -38,7 +39,7 @@ async function getPlayerName(player_id) {
   try {
     const result = await docClient.send(
       new GetCommand({
-        TableName: "matches",
+        TableName: tables.matches,
         Key: {
           player_id: String(player_id),
           game: "deadlock",

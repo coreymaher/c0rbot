@@ -10,21 +10,22 @@
     "@aws-sdk/lib-dynamodb": "^3.700.0",
     "big-number": "^0.4.0",
     "cheerio": "^0.22.0",
-    "crypto": "0.0.3",
     "dotaconstants": "^10.8.0",
     "ordinal": "^1.0.2",
     "protobufjs": "^6.8.6",
     "request": "^2.88.0"
   },
   "devDependencies": {
-    "prettier": "^3.6.2",
-    "serverless": "^3.28.1"
+    "esbuild": "^0.28.1",
+    "prettier": "^3.6.2"
   },
   "scripts": {
     "decrypt": "sops -d environment.js.enc > environment.js",
     "encrypt": "sops -e environment.js > environment.js.enc",
-    "deploy": "npm run decrypt && serverless deploy"
+    "deploy": "npm run decrypt && npm --prefix cdk install && cd cdk && npx cdk deploy",
+    "synth": "npm run decrypt && npm --prefix cdk install && cd cdk && npx cdk synth"
   },
   "author": "",
-  "license": "ISC"
+  "license": "ISC",
+  "packageManager": "yarn@1.22.22+sha512.a6b2f7906b721bba3d67d4aff083df04dad64c399707841b7acf00f6b133b7ac24255f2652fa22ae3534329dc6180534e98d17432037ff6fd140556e2bb3137e"
 }

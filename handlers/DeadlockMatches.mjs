@@ -15,6 +15,7 @@ import { simpleGet } from "../utils.js";
 import * as constants from "../lib/DeadlockConstants.mjs";
 import DeadlockAPI from "../lib/DeadlockAPI.mjs";
 import cache from "../lib/cache.mjs";
+import tables from "../lib/tables.js";
 
 const discord = new Discord();
 const deadlockAPI = new DeadlockAPI(cache);
@@ -23,7 +24,7 @@ const environment = JSON.parse(process.env.environment);
 discord.init(environment.discord);
 
 const scanParams = {
-  TableName: "matches",
+  TableName: tables.matches,
   FilterExpression: "game = :s",
   ExpressionAttributeValues: {
     ":s": "deadlock",
@@ -43,7 +44,7 @@ async function loadDBUsers() {
 
 async function updateDB(playerID, lastMatchID) {
   const params = {
-    TableName: "matches",
+    TableName: tables.matches,
     Key: {
       player_id: playerID,
       game: "deadlock",

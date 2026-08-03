@@ -8,6 +8,7 @@ const {
 } = require("@aws-sdk/lib-dynamodb");
 const Discord = require("./lib/Discord");
 const OpenDotaAPI = require("./OpenDotaAPI");
+const tables = require("./lib/tables.js");
 
 // Loaded dynamically since DotaConstants is now ESM
 let DotaConstants;
@@ -44,7 +45,7 @@ async function loadDBUsers(data) {
 async function loadConfig(data) {
   try {
     const scanParams = {
-      TableName: "config",
+      TableName: tables.config,
       FilterExpression: "ConfigScope = :s",
       ExpressionAttributeValues: {
         ":s": "OpenDotaMatches",
@@ -62,7 +63,7 @@ async function loadConfig(data) {
     console.error("DynamoDB.get error:");
     console.error(err);
     console.error({
-      TableName: "config",
+      TableName: tables.config,
       FilterExpression: "ConfigScope = :s",
       ExpressionAttributeValues: { ":s": "OpenDotaMatches" },
     });
