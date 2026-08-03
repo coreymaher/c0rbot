@@ -94,7 +94,7 @@ export class C0rbotStack extends cdk.Stack {
         functionName: `c0rbot-${name}`,
         entry: path.join(REPO_ROOT, opts.entry),
         handler: "handler",
-        runtime: lambda.Runtime.NODEJS_22_X,
+        runtime: lambda.Runtime.NODEJS_24_X,
         memorySize: 1024,
         // Declared, because the group Lambda creates implicitly is unmanaged and
         // never expires. The name is pinned: a generated one breaks `aws logs tail`.
@@ -114,10 +114,9 @@ export class C0rbotStack extends cdk.Stack {
         projectRoot: REPO_ROOT,
         depsLockFilePath: path.join(REPO_ROOT, "package-lock.json"),
         bundling: {
-          // The Node 22 runtime ships the v3 SDK; bundling it would add ~10MB.
           externalModules: ["@aws-sdk/*"],
           format: OutputFormat.CJS,
-          target: "node22",
+          target: "node24",
           minify: false,
           sourceMap: false,
         },
@@ -139,16 +138,10 @@ export class C0rbotStack extends cdk.Stack {
     feeds.grantReadWriteData(steamUpdates);
 
     const noMansSkyPatches = makeFunction("noMansSkyPatches", {
-      entry: "handlers/NoMansSky.js",
+      entry: "handlers/NoMansSky.mjs",
       env: { table: FEEDS_TABLE },
     });
     feeds.grantReadWriteData(noMansSkyPatches);
-
-    const deadlockPatches = makeFunction("deadlockPatches", {
-      entry: "handlers/DeadlockPatches.js",
-      env: { table: FEEDS_TABLE },
-    });
-    feeds.grantReadWriteData(deadlockPatches);
 
     const deadlockMatches = makeFunction("deadlockMatches", {
       entry: "handlers/DeadlockMatches.mjs",
@@ -227,7 +220,6 @@ export class C0rbotStack extends cdk.Stack {
     schedule("openDotaMatches", cdk.Duration.minutes(10), openDotaMatches);
     schedule("steamUpdates", cdk.Duration.hours(1), steamUpdates);
     schedule("noMansSkyPatches", cdk.Duration.hours(1), noMansSkyPatches);
-    schedule("deadlockPatches", cdk.Duration.hours(1), deadlockPatches);
     schedule("deadlockMatches", cdk.Duration.minutes(30), deadlockMatches);
 
     new cdk.CfnOutput(this, "DiscordWebhookUrl", {

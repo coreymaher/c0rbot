@@ -1,12 +1,20 @@
 {
   "compilerOptions": {
     "target": "ES2022",
-    "module": "commonjs",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
     "lib": ["es2022"],
     "strict": true,
     "noImplicitReturns": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
+    "isolatedModules": true,
+    // npm hoists @types/node to the workspace root, which is not under cdk/.
+    "typeRoots": ["../node_modules/@types"],
+    "types": ["node"],
+    // tsc is a type-check only -- tsx runs the app straight from the .ts sources.
+    // Without this, `tsc` would emit .js beside them, which .gitignore does not cover.
+    "noEmit": true,
     "inlineSourceMap": true,
     "inlineSources": true
   },
