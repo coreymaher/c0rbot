@@ -1,3 +1,4 @@
+import * as fs from "fs";
 import * as path from "path";
 import * as cdk from "aws-cdk-lib";
 import { Construct } from "constructs";
@@ -9,10 +10,15 @@ import * as lambda from "aws-cdk-lib/aws-lambda";
 import { NodejsFunction, OutputFormat } from "aws-cdk-lib/aws-lambda-nodejs";
 
 const REPO_ROOT = path.resolve(__dirname, "..", "..");
+const ENV_FILE = path.join(REPO_ROOT, "environment.js");
+
+if (!fs.existsSync(ENV_FILE)) {
+  throw new Error(`${ENV_FILE} not found. Run \`npm run decrypt\` first.`);
+}
 
 // Requires `npm run decrypt` first. Exports a function returning the env vars.
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-const { environment } = require(path.join(REPO_ROOT, "environment.js"));
+const { environment } = require(ENV_FILE);
 
 // These two tables carry a `-dev` suffix the others do not. Renaming a DynamoDB
 // table means recreating it and migrating the data, so the names stay as they are.
@@ -197,8 +203,8 @@ export class C0rbotStack extends cdk.Stack {
     const discordWebhookHandler = makeFunction("discordWebhookHandler", {
       entry: "handlers/DiscordWebhookHandler.mjs",
       env: {
-        DOTA_ANALYST_FUNCTION_NAME: "c0rbot-dotaAnalyst",
-        DEADLOCK_ANALYST_FUNCTION_NAME: "c0rbot-deadlockAnalyst",
+        DOTA_ANALYST_FUNCTION_NAME: dotaAnalyst.functionName,
+        DEADLOCK_ANALYST_FUNCTION_NAME: deadlockAnalyst.functionName,
       },
     });
     dotaAnalyst.grantInvoke(discordWebhookHandler);
