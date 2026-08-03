@@ -6,22 +6,36 @@ const {
   GetCommand,
   PutCommand,
 } = require("@aws-sdk/lib-dynamodb");
-const request = require("request");
 
 const client = new DynamoDBClient({});
 const docClient = DynamoDBDocumentClient.from(client);
 
-module.exports.simpleGet = async (url, options = {}) => {
-  return new Promise((resolve, reject) => {
-    request({ url, ...options }, (err, response, body) => {
-      if (err) {
-        console.error(`request error ${url}:`);
-        console.error(err);
-      }
+// `request` sent no User-Agent and every scrape target accepted it. `fetch` sends
+// `node`, so name ourselves rather than let an origin decide what that means.
+const USER_AGENT = "c0rbot/1.0 (+https://github.com/coreymaher/c0rbot)";
 
-      resolve(body);
+// Resolves the response body, or `undefined` on any failure -- callers treat a falsy
+// result as a transient error and skip the run.
+module.exports.simpleGet = async (url, { qs, headers, timeout } = {}) => {
+  const target = qs ? `${url}?${new URLSearchParams(qs)}` : url;
+
+  try {
+    const response = await fetch(target, {
+      headers: { "User-Agent": USER_AGENT, ...headers },
+      signal: timeout ? AbortSignal.timeout(timeout) : undefined,
     });
-  });
+
+    if (!response.ok) {
+      console.error(`request error ${url}: HTTP ${response.status}`);
+      return undefined;
+    }
+
+    return await response.text();
+  } catch (err) {
+    console.error(`request error ${url}:`);
+    console.error(err);
+    return undefined;
+  }
 };
 
 module.exports.loadFeedData = async (key) => {
