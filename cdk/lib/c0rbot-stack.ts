@@ -16,15 +16,10 @@ const REPO_ROOT = path.resolve(__dirname, "..", "..");
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const { environment } = require(path.join(REPO_ROOT, "environment.js"));
 
-/** Memory allocation shared by every function. */
-const MEMORY_SIZE = 1024;
-
 // These two tables carry a `-dev` suffix the others do not. Renaming a DynamoDB
 // table means recreating it and migrating the data, so the names stay as they are.
 const FEEDS_TABLE = "feeds-dev";
 const DOTA_PLAYERS_TABLE = "dota-players-dev";
-
-export type C0rbotStackProps = cdk.StackProps;
 
 interface FunctionOptions {
   /** Path relative to the repo root. */
@@ -35,7 +30,7 @@ interface FunctionOptions {
 }
 
 export class C0rbotStack extends cdk.Stack {
-  constructor(scope: Construct, id: string, props: C0rbotStackProps) {
+  constructor(scope: Construct, id: string, props: cdk.StackProps) {
     super(scope, id, props);
 
     const secrets: Record<string, string> = environment();
@@ -99,7 +94,7 @@ export class C0rbotStack extends cdk.Stack {
         entry: path.join(REPO_ROOT, opts.entry),
         handler: "handler",
         runtime: lambda.Runtime.NODEJS_22_X,
-        memorySize: MEMORY_SIZE,
+        memorySize: 1024,
         timeout: cdk.Duration.seconds(opts.timeout ?? 30),
         environment: { ...secrets, ...(opts.env ?? {}) },
         projectRoot: REPO_ROOT,
