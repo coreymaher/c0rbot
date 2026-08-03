@@ -10,9 +10,7 @@ import { NodejsFunction, OutputFormat } from "aws-cdk-lib/aws-lambda-nodejs";
 
 const REPO_ROOT = path.resolve(__dirname, "..", "..");
 
-// SOPS-encrypted secrets, decrypted by `npm run decrypt` before synth. Exports a
-// function returning { environment: "<json string>" } -- the single `environment`
-// env var that every handler JSON.parses.
+// Requires `npm run decrypt` first. Exports a function returning the env vars.
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const { environment } = require(path.join(REPO_ROOT, "environment.js"));
 
@@ -35,8 +33,7 @@ export class C0rbotStack extends cdk.Stack {
 
     const secrets: Record<string, string> = environment();
 
-    // RETAIN so a stack delete cannot destroy data. Changing a table name or key
-    // schema here replaces the table and loses its contents.
+    // Changing a table name or key schema here replaces the table, losing its contents.
     const str = (name: string): dynamodb.Attribute => ({
       name,
       type: dynamodb.AttributeType.STRING,
@@ -75,7 +72,6 @@ export class C0rbotStack extends cdk.Stack {
     const config = table("ConfigTable", "config", str("Key"), 1, {
       sortKey: str("ConfigScope"),
     });
-    // TTL is enabled on this table; dropping the attribute here disables it.
     const cache = table("CacheTable", "cache", str("namespace"), 5, {
       sortKey: str("key"),
       timeToLiveAttribute: "expires_at",
@@ -108,8 +104,6 @@ export class C0rbotStack extends cdk.Stack {
           sourceMap: false,
         },
       });
-
-    // --- Scheduled feed pollers -------------------------------------------
 
     const openDotaMatches = makeFunction("openDotaMatches", {
       entry: "handlers/OpenDotaMatches.mjs",
@@ -144,15 +138,12 @@ export class C0rbotStack extends cdk.Stack {
     });
     feeds.grantReadWriteData(deadlockPatches);
 
-    // No `table` env var: DeadlockMatches.mjs hardcodes TableName "matches".
     const deadlockMatches = makeFunction("deadlockMatches", {
       entry: "handlers/DeadlockMatches.mjs",
       timeout: 60,
     });
     matches.grantReadWriteData(deadlockMatches);
     cache.grantReadWriteData(deadlockMatches);
-
-    // --- On-demand analysts, invoked by the webhook handler ---------------
 
     const dotaAnalyst = makeFunction("dotaAnalyst", {
       entry: "handlers/DotaAnalyst.mjs",
@@ -186,7 +177,6 @@ export class C0rbotStack extends cdk.Stack {
     matches.grantReadWriteData(deadlockAnalyst);
     cache.grantReadWriteData(deadlockAnalyst);
 
-    // Lets EventBridge Scheduler re-invoke the analyst for the 2-minute retry.
     const schedulerRole = new iam.Role(this, "EventBridgeSchedulerRole", {
       roleName: schedulerRoleName,
       assumedBy: new iam.ServicePrincipal("scheduler.amazonaws.com"),
@@ -197,8 +187,6 @@ export class C0rbotStack extends cdk.Stack {
         resources: [dotaAnalyst.functionArn],
       }),
     );
-
-    // --- Discord interaction endpoint -------------------------------------
 
     const discordWebhookHandler = makeFunction("discordWebhookHandler", {
       entry: "handlers/DiscordWebhookHandler.mjs",
@@ -213,8 +201,6 @@ export class C0rbotStack extends cdk.Stack {
     const functionUrl = discordWebhookHandler.addFunctionUrl({
       authType: lambda.FunctionUrlAuthType.NONE,
     });
-
-    // --- Schedules --------------------------------------------------------
 
     const schedule = (
       name: string,
@@ -232,8 +218,6 @@ export class C0rbotStack extends cdk.Stack {
     schedule("noMansSkyPatches", cdk.Duration.hours(1), noMansSkyPatches);
     schedule("deadlockPatches", cdk.Duration.hours(1), deadlockPatches);
     schedule("deadlockMatches", cdk.Duration.minutes(30), deadlockMatches);
-
-    // --- Outputs ----------------------------------------------------------
 
     new cdk.CfnOutput(this, "DiscordWebhookUrl", {
       value: functionUrl.url,
