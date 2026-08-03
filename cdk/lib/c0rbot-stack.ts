@@ -104,7 +104,7 @@ export class C0rbotStack extends cdk.Stack {
           ...(opts.env ?? {}),
         },
         projectRoot: REPO_ROOT,
-        depsLockFilePath: path.join(REPO_ROOT, "yarn.lock"),
+        depsLockFilePath: path.join(REPO_ROOT, "package-lock.json"),
         bundling: {
           // The Node 22 runtime ships the v3 SDK; bundling it would add ~10MB.
           externalModules: ["@aws-sdk/*"],

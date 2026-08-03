@@ -8,8 +8,7 @@
     "esModuleInterop": true,
     "skipLibCheck": true,
     "inlineSourceMap": true,
-    "inlineSources": true,
-    "typeRoots": ["./node_modules/@types"]
+    "inlineSources": true
   },
   "exclude": ["node_modules", "cdk.out"]
 }

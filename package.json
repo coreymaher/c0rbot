@@ -2,6 +2,9 @@
   "name": "lambda",
   "version": "1.0.0",
   "description": "",
+  "workspaces": [
+    "cdk"
+  ],
   "dependencies": {
     "@aws-sdk/client-dynamodb": "^3.700.0",
     "@aws-sdk/client-lambda": "^3.700.0",
@@ -18,10 +21,9 @@
   "scripts": {
     "decrypt": "sops -d environment.js.enc > environment.js",
     "encrypt": "sops -e environment.js > environment.js.enc",
-    "deploy": "npm run decrypt && npm --prefix cdk install && cd cdk && npx cdk deploy",
-    "synth": "npm run decrypt && npm --prefix cdk install && cd cdk && npx cdk synth"
+    "deploy": "npm run decrypt && npm --workspace c0rbot-cdk exec cdk deploy",
+    "synth": "npm run decrypt && npm --workspace c0rbot-cdk exec cdk synth"
   },
   "author": "",
-  "license": "ISC",
-  "packageManager": "yarn@1.22.22+sha512.a6b2f7906b721bba3d67d4aff083df04dad64c399707841b7acf00f6b133b7ac24255f2652fa22ae3534329dc6180534e98d17432037ff6fd140556e2bb3137e"
+  "license": "ISC"
 }
