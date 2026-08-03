@@ -92,7 +92,13 @@ export class C0rbotStack extends cdk.Stack {
         runtime: lambda.Runtime.NODEJS_22_X,
         memorySize: 1024,
         timeout: cdk.Duration.seconds(opts.timeout ?? 30),
-        environment: { ...secrets, ...(opts.env ?? {}) },
+        environment: {
+          ...secrets,
+          CACHE_TABLE: cache.tableName,
+          CONFIG_TABLE: config.tableName,
+          MATCHES_TABLE: matches.tableName,
+          ...(opts.env ?? {}),
+        },
         projectRoot: REPO_ROOT,
         depsLockFilePath: path.join(REPO_ROOT, "yarn.lock"),
         bundling: {
