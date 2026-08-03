@@ -10,19 +10,17 @@ import { NodejsFunction, OutputFormat } from "aws-cdk-lib/aws-lambda-nodejs";
 
 const REPO_ROOT = path.resolve(__dirname, "..", "..");
 
-// Same secrets file serverless.yml read via `${file(environment.js):environment}`.
-// It exports a function returning { environment: "<json string>" }, which is the
-// single `environment` env var every handler JSON.parses. Requires `npm run decrypt`.
+// SOPS-encrypted secrets, decrypted by `npm run decrypt` before synth. Exports a
+// function returning { environment: "<json string>" } -- the single `environment`
+// env var that every handler JSON.parses.
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const { environment } = require(path.join(REPO_ROOT, "environment.js"));
 
-/** Matches the deployed serverless functions, which run at 1024MB (CDK defaults to 128). */
+/** Memory allocation shared by every function. */
 const MEMORY_SIZE = 1024;
 
-// These two tables were created by the serverless stack with a `-dev` stage
-// suffix. There is only one environment, so the suffix is vestigial -- but
-// renaming a DynamoDB table means recreating it and migrating the data, so the
-// legacy names stay. Everything else here is unsuffixed.
+// These two tables carry a `-dev` suffix the others do not. Renaming a DynamoDB
+// table means recreating it and migrating the data, so the names stay as they are.
 const FEEDS_TABLE = "feeds-dev";
 const DOTA_PLAYERS_TABLE = "dota-players-dev";
 
@@ -31,7 +29,7 @@ export type C0rbotStackProps = cdk.StackProps;
 interface FunctionOptions {
   /** Path relative to the repo root. */
   entry: string;
-  /** Seconds. Serverless provider default was 30. */
+  /** Seconds. Defaults to 30. */
   timeout?: number;
   env?: Record<string, string>;
 }
@@ -42,9 +40,8 @@ export class C0rbotStack extends cdk.Stack {
 
     const secrets: Record<string, string> = environment();
 
-    // Adopted from the deleted serverless stack via `cdk import`. These must
-    // match the live tables exactly -- key schema, capacity and TTL -- or the
-    // import is rejected. RETAIN so a future stack delete cannot destroy data.
+    // RETAIN so a stack delete cannot destroy data. Changing a table name or key
+    // schema here replaces the table and loses its contents.
     const str = (name: string): dynamodb.Attribute => ({
       name,
       type: dynamodb.AttributeType.STRING,
@@ -83,8 +80,7 @@ export class C0rbotStack extends cdk.Stack {
     const config = table("ConfigTable", "config", str("Key"), 1, {
       sortKey: str("ConfigScope"),
     });
-    // TTL was enabled out-of-band, never declared in serverless.yml. Omitting it
-    // here would make CDK try to disable it on the imported table.
+    // TTL is enabled on this table; dropping the attribute here disables it.
     const cache = table("CacheTable", "cache", str("namespace"), 5, {
       sortKey: str("key"),
       timeToLiveAttribute: "expires_at",
@@ -92,9 +88,8 @@ export class C0rbotStack extends cdk.Stack {
     // No live function uses this one, but it holds data and should stay managed.
     table("FortniteTable", "fortnite", str("name"), 1);
 
-    // Built from the explicit role name rather than the Role object, to avoid a
-    // cycle: the role's policy needs the analyst ARN, the analyst's env needs
-    // the role ARN. serverless.yml resolved it the same way.
+    // Built from the role name rather than the Role object to avoid a cycle: the
+    // role's policy needs the analyst ARN, and the analyst's env needs the role ARN.
     const schedulerRoleName = "c0rbot-scheduler-role";
     const schedulerRoleArn = `arn:aws:iam::${this.account}:role/${schedulerRoleName}`;
 
@@ -154,9 +149,7 @@ export class C0rbotStack extends cdk.Stack {
     });
     feeds.grantReadWriteData(deadlockPatches);
 
-    // No `table` env var: DeadlockMatches.mjs hardcodes TableName "matches" and
-    // ignored the serverless `deadlock-players-dev` value, which pointed at a
-    // table that does not exist.
+    // No `table` env var: DeadlockMatches.mjs hardcodes TableName "matches".
     const deadlockMatches = makeFunction("deadlockMatches", {
       entry: "handlers/DeadlockMatches.mjs",
       timeout: 60,
