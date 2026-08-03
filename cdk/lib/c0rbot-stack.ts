@@ -138,12 +138,6 @@ export class C0rbotStack extends cdk.Stack {
     });
     feeds.grantReadWriteData(steamUpdates);
 
-    const valheimPatches = makeFunction("valheimPatches", {
-      entry: "handlers/valheim.js",
-      env: { table: FEEDS_TABLE },
-    });
-    feeds.grantReadWriteData(valheimPatches);
-
     const noMansSkyPatches = makeFunction("noMansSkyPatches", {
       entry: "handlers/NoMansSky.js",
       env: { table: FEEDS_TABLE },
@@ -232,7 +226,6 @@ export class C0rbotStack extends cdk.Stack {
 
     schedule("openDotaMatches", cdk.Duration.minutes(10), openDotaMatches);
     schedule("steamUpdates", cdk.Duration.hours(1), steamUpdates);
-    schedule("valheimPatches", cdk.Duration.hours(1), valheimPatches);
     schedule("noMansSkyPatches", cdk.Duration.hours(1), noMansSkyPatches);
     schedule("deadlockPatches", cdk.Duration.hours(1), deadlockPatches);
     schedule("deadlockMatches", cdk.Duration.minutes(30), deadlockMatches);
