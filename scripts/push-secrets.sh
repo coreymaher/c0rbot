@@ -16,17 +16,15 @@ PARAMETER="/c0rbot/environment"
 PROFILE=${AWS_PROFILE:-c0rbot-admin}
 REGION=${AWS_REGION:-us-east-1}
 
-# Written to a file rather than passed on the command line: an --value argument is
-# visible in `ps` output and lands in shell history.
+# TMP holds the value for `aws ssm put-parameter`: written to a file rather than passed on
+# the command line, where a --value argument is visible in `ps` and lands in shell history.
+# PLAINTEXT is the decrypted module, read for the same `environment()` export the stack
+# used to consume so this stays in step with whatever shape that file has.
 TMP=$(mktemp)
-trap 'rm -f "$TMP"' EXIT
-chmod 600 "$TMP"
-
-# Decrypt to a temporary module and read the same `environment()` export the stack used
-# to consume, so this stays in step with whatever shape that file has.
 PLAINTEXT=$(mktemp -t environment-XXXXXX.js)
 trap 'rm -f "$TMP" "$PLAINTEXT"' EXIT
-chmod 600 "$PLAINTEXT"
+chmod 600 "$TMP" "$PLAINTEXT"
+
 sops -d "$REPO_ROOT/environment.js.enc" > "$PLAINTEXT"
 
 node -e '

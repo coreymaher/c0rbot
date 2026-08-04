@@ -23,16 +23,6 @@ const server = createServer((req, res) => {
   let body = "";
   req.on("data", (chunk) => (body += chunk));
   req.on("end", () => {
-    const target = req.headers["x-amz-target"] ?? "";
-
-    if (!target.endsWith("GetParameter")) {
-      res.writeHead(400, { "Content-Type": "application/x-amz-json-1.1" });
-      res.end(
-        JSON.stringify({ __type: "InvalidAction", message: `got ${target}` }),
-      );
-      return;
-    }
-
     const { Name } = JSON.parse(body || "{}");
 
     res.writeHead(200, { "Content-Type": "application/x-amz-json-1.1" });

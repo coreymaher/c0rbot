@@ -123,26 +123,14 @@ export class C0rbotStack extends cdk.Stack {
       });
 
       // Config is fetched at init rather than injected, so every function needs to read
-      // the one parameter. kms:Decrypt is belt and braces: the aws/ssm key policy already
-      // allows the account through SSM, but the grant costs nothing and removes a
-      // dependency on that policy staying as it is.
+      // the one parameter. No kms:Decrypt grant: the aws/ssm key policy allows the account
+      // directly for calls that arrive through SSM, so repeating it here buys nothing.
       fn.addToRolePolicy(
         new iam.PolicyStatement({
           actions: ["ssm:GetParameter"],
           resources: [
             `arn:aws:ssm:${this.region}:${this.account}:parameter${SECRETS_PARAMETER}`,
           ],
-        }),
-      );
-      fn.addToRolePolicy(
-        new iam.PolicyStatement({
-          actions: ["kms:Decrypt"],
-          resources: ["*"],
-          conditions: {
-            StringEquals: {
-              "kms:ViaService": `ssm.${this.region}.amazonaws.com`,
-            },
-          },
         }),
       );
 
