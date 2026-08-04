@@ -224,7 +224,6 @@ export async function handler() {
 
     const data = JSON.parse(content);
 
-    // Validate that data is an array
     if (!Array.isArray(data)) {
       console.error(
         `Unexpected API response for ${user.name} (${user.player_id}):`,

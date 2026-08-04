@@ -88,16 +88,13 @@ export async function handler(event) {
 
   const [action, matchId, playerId] = parts;
 
-  // Determine game type and action
   let functionName;
   let isReanalyze;
 
   if (action === "ai" || action === "reanalyze") {
-    // Dota
     functionName = process.env.DOTA_ANALYST_FUNCTION_NAME;
     isReanalyze = action === "reanalyze";
   } else if (action === "ai_dl" || action === "reanalyze_dl") {
-    // Deadlock
     functionName = process.env.DEADLOCK_ANALYST_FUNCTION_NAME;
     isReanalyze = action === "reanalyze_dl";
   } else {
