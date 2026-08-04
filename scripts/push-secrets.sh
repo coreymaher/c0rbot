@@ -16,14 +16,18 @@ PARAMETER="/c0rbot/environment"
 PROFILE=${AWS_PROFILE:-c0rbot-admin}
 REGION=${AWS_REGION:-us-east-1}
 
-# TMP holds the value for `aws ssm put-parameter`: written to a file rather than passed on
+# One directory rather than two temp files: mktemp -d takes no template, so it behaves the
+# same on BSD and GNU, and 0700 on the directory is what keeps both files private.
+#
+# TMP holds the value for `aws ssm put-parameter`, written to a file rather than passed on
 # the command line, where a --value argument is visible in `ps` and lands in shell history.
 # PLAINTEXT is the decrypted module, read for the same `environment()` export the stack
-# used to consume so this stays in step with whatever shape that file has.
-TMP=$(mktemp)
-PLAINTEXT=$(mktemp -t environment-XXXXXX.js)
-trap 'rm -f "$TMP" "$PLAINTEXT"' EXIT
-chmod 600 "$TMP" "$PLAINTEXT"
+# used to consume so this stays in step with whatever shape that file has -- it needs a
+# real .js name because node requires it.
+WORK=$(mktemp -d)
+TMP="$WORK/value.json"
+PLAINTEXT="$WORK/environment.js"
+trap 'rm -rf "$WORK"' EXIT INT TERM
 
 sops -d "$REPO_ROOT/environment.js.enc" > "$PLAINTEXT"
 
