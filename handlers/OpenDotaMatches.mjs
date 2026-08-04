@@ -72,10 +72,8 @@ async function loadConfig(data) {
 function loadRecentMatches(data) {
   console.log(`Checking matches for ${data.dbUsers.length} users`);
   const userPromises = data.dbUsers.map((user) => {
-    // Swallowed only at this stage: a player OpenDota cannot answer for is skipped
-    // and the rest of the poll proceeds. Later stages are not guarded -- a failure
-    // there aborts the run before any message is sent, which is the safe direction,
-    // since updateDB never runs and the next poll picks the same matches back up.
+    // Only this stage is guarded. Later ones abort the run instead, which is safe:
+    // updateDB never runs, so the next poll picks the same matches back up.
     return openDotaAPI
       .getRecentMatches(user.steamID)
       .catch((err) => {
@@ -87,7 +85,7 @@ function loadRecentMatches(data) {
           `User ${user.steamID}: got ${matches.length} recent matches, last notified ${user.last_matchID}`,
         );
 
-        // Find new matches (match_id > last_matchID since IDs increment)
+        // Match IDs increment, so a greater ID is a newer match.
         const newMatches = matches.filter(
           (match) => match.match_id > user.last_matchID,
         );
@@ -105,7 +103,7 @@ function loadRecentMatches(data) {
 
           const sortedMatchIDs = newMatches
             .map((match) => match.match_id)
-            .sort((a, b) => a - b); // Sort ascending (oldest first)
+            .sort((a, b) => a - b);
 
           data.users[user.steamID] = {
             matches: sortedMatchIDs,
@@ -272,7 +270,7 @@ function sendDiscordMessage(data) {
     if (rankTiers.length > 1) {
       const totalTierIndex = rankTiers
         .map((rank) => {
-          return DotaConstants.rankTierValues.indexOf(rank); // Conv
+          return DotaConstants.rankTierValues.indexOf(rank);
         })
         .reduce((total, rank) => {
           return (total += rank);
