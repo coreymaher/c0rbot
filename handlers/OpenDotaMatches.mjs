@@ -14,7 +14,7 @@ import tables from "../lib/tables.mjs";
 const client = new DynamoDBClient({});
 const docClient = DynamoDBDocumentClient.from(client);
 
-const openDotaAPI = new OpenDotaAPI(cache);
+const openDotaAPI = new OpenDotaAPI(cache, 10_000);
 
 const environment = await secrets();
 const discord = new Discord(environment.discord);
@@ -72,8 +72,10 @@ async function loadConfig(data) {
 function loadRecentMatches(data) {
   console.log(`Checking matches for ${data.dbUsers.length} users`);
   const userPromises = data.dbUsers.map((user) => {
-    // Swallowed per user: one player OpenDota cannot answer for should cost that
-    // player's matches this run, not the whole poll.
+    // Swallowed only at this stage: a player OpenDota cannot answer for is skipped
+    // and the rest of the poll proceeds. Later stages are not guarded -- a failure
+    // there aborts the run before any message is sent, which is the safe direction,
+    // since updateDB never runs and the next poll picks the same matches back up.
     return openDotaAPI
       .getRecentMatches(user.steamID)
       .catch((err) => {
