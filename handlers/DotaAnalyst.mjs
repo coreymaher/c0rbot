@@ -1,6 +1,6 @@
 "use strict";
 
-import Discord from "../lib/Discord.js";
+import Discord from "../lib/Discord.mjs";
 import cache from "../lib/cache.mjs";
 import OpenDotaAPI from "../lib/OpenDotaAPI.mjs";
 import LLMClient from "../lib/LLMClient.mjs";

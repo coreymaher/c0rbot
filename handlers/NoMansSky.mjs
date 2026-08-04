@@ -1,8 +1,8 @@
 "use strict";
 
-import Discord from "../lib/Discord.js";
+import Discord from "../lib/Discord.mjs";
 import secrets from "../lib/secrets.mjs";
-import { simpleGet, loadFeedData, updateFeedData } from "../utils.js";
+import { simpleGet, loadFeedData, updateFeedData } from "../lib/utils.mjs";
 
 const discord = new Discord();
 
