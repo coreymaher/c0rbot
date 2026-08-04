@@ -10,19 +10,18 @@ import {
 const client = new DynamoDBClient({});
 const docClient = DynamoDBDocumentClient.from(client);
 
-import Discord from "../lib/Discord.js";
-import { simpleGet } from "../utils.js";
+import Discord from "../lib/Discord.mjs";
+import { simpleGet } from "../lib/utils.mjs";
 import * as constants from "../lib/DeadlockConstants.mjs";
 import DeadlockAPI from "../lib/DeadlockAPI.mjs";
 import cache from "../lib/cache.mjs";
 import secrets from "../lib/secrets.mjs";
-import tables from "../lib/tables.js";
+import tables from "../lib/tables.mjs";
 
-const discord = new Discord();
 const deadlockAPI = new DeadlockAPI(cache);
 
 const environment = await secrets();
-discord.init(environment.discord);
+const discord = new Discord(environment.discord);
 
 const scanParams = {
   TableName: tables.matches,

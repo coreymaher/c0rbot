@@ -105,11 +105,7 @@ export class C0rbotStack extends cdk.Stack {
         depsLockFilePath: path.join(REPO_ROOT, "package-lock.json"),
         bundling: {
           externalModules: ["@aws-sdk/*"],
-          // Required: bundled CommonJS (utils.js, OpenDotaAPI.js) keeps `require` calls
-          // that esbuild otherwise turns into a throwing shim.
           format: OutputFormat.ESM,
-          banner:
-            "import{createRequire as ___cr}from'module';const require=___cr(import.meta.url);",
           target: "node24",
           minify: false,
           sourceMap: false,
@@ -135,7 +131,6 @@ export class C0rbotStack extends cdk.Stack {
     });
     dotaPlayers.grantReadWriteData(openDotaMatches);
     config.grantReadWriteData(openDotaMatches);
-    // Reached via a dynamic import in OpenDotaAPI.js, not a static require.
     cache.grantReadWriteData(openDotaMatches);
 
     const steamUpdates = makeFunction("steamUpdates", {

@@ -2,7 +2,7 @@
 
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import { DynamoDBDocumentClient, GetCommand } from "@aws-sdk/lib-dynamodb";
-import Discord from "../lib/Discord.js";
+import Discord from "../lib/Discord.mjs";
 import cache from "../lib/cache.mjs";
 import LLMClient from "../lib/LLMClient.mjs";
 import secrets from "../lib/secrets.mjs";
@@ -13,7 +13,7 @@ import {
   generateCompactMatch,
   generateAnalysisPrompt,
 } from "../lib/DeadlockMatchProcessor.mjs";
-import tables from "../lib/tables.js";
+import tables from "../lib/tables.mjs";
 
 const dbClient = new DynamoDBClient({});
 const docClient = DynamoDBDocumentClient.from(dbClient);
@@ -53,8 +53,7 @@ async function getPlayerName(player_id) {
   }
 }
 
-const discord = new Discord();
-discord.init(environment.discord);
+const discord = new Discord(environment.discord);
 
 const llm = new LLMClient({
   openai: environment.openai.apikey,
