@@ -380,5 +380,4 @@ module.exports = async () => {
     .then(() => ({ message: "Done" }));
 };
 
-// Called by handlers/OpenDotaMatches.mjs, which explains why config arrives this way.
 module.exports.init = (environment) => discord.init(environment.discord);

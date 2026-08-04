@@ -16,10 +16,9 @@ const REPO_ROOT = path.resolve(__dirname, "..", "..");
 const FEEDS_TABLE = "feeds-dev";
 const DOTA_PLAYERS_TABLE = "dota-players-dev";
 
-// Nothing sensitive belongs in `environment` below: CloudFormation publishes it as
-// plaintext in the template and the bootstrap assets bucket. Secrets go in this
-// SecureString instead, written by `npm run secrets:push` -- deliberately not a CDK
-// resource, since managing the value here would put it back in the template.
+// CloudFormation publishes `environment` as plaintext in the template and the bootstrap
+// assets bucket, so nothing sensitive can go there. Not a CDK resource on purpose:
+// managing the value here would put it back in the template.
 const SECRETS_PARAMETER = "/c0rbot/environment";
 
 interface FunctionOptions {
@@ -109,10 +108,9 @@ export class C0rbotStack extends cdk.Stack {
         depsLockFilePath: path.join(REPO_ROOT, "package-lock.json"),
         bundling: {
           externalModules: ["@aws-sdk/*"],
-          // ESM so handlers can `await secrets()` at module scope. The banner is not
-          // optional: bundled CommonJS (utils.js, OpenDotaAPI.js) keeps its `require`
-          // calls, which esbuild turns into a shim that throws "Dynamic require of ... is
-          // not supported" unless a real `require` is in scope.
+          // The banner is not optional: bundled CommonJS (utils.js, OpenDotaAPI.js) keeps
+          // its `require` calls, which esbuild turns into a shim that throws "Dynamic
+          // require of ... is not supported" unless a real `require` is in scope.
           format: OutputFormat.ESM,
           banner:
             "import{createRequire as ___cr}from'module';const require=___cr(import.meta.url);",
