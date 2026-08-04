@@ -16,8 +16,6 @@ const REPO_ROOT = path.resolve(__dirname, "..", "..");
 const FEEDS_TABLE = "feeds-dev";
 const DOTA_PLAYERS_TABLE = "dota-players-dev";
 
-// CloudFormation publishes `environment` as plaintext, so nothing sensitive goes there.
-// Not a CDK resource on purpose: that would put the value back in the template.
 const SECRETS_PARAMETER = "/c0rbot/environment";
 
 interface FunctionOptions {
