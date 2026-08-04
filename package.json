@@ -21,8 +21,8 @@
     "decrypt": "sops -d environment.js.enc > environment.js",
     "encrypt": "sops -e environment.js > environment.js.enc",
     "secrets:push": "./scripts/push-secrets.sh",
-    "deploy": "npm --workspace c0rbot-cdk exec cdk deploy",
-    "synth": "npm --workspace c0rbot-cdk exec cdk synth"
+    "deploy": "npm --workspace c0rbot-cdk exec -- cdk deploy",
+    "synth": "npm --workspace c0rbot-cdk exec -- cdk synth"
   },
   "author": "",
   "license": "ISC"
