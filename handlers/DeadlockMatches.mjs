@@ -18,11 +18,10 @@ import cache from "../lib/cache.mjs";
 import secrets from "../lib/secrets.mjs";
 import tables from "../lib/tables.mjs";
 
-const discord = new Discord();
 const deadlockAPI = new DeadlockAPI(cache);
 
 const environment = await secrets();
-discord.init(environment.discord);
+const discord = new Discord(environment.discord);
 
 const scanParams = {
   TableName: tables.matches,

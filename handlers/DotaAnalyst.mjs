@@ -33,8 +33,7 @@ function createTimer(operationName) {
   };
 }
 
-const discord = new Discord();
-discord.init(environment.discord);
+const discord = new Discord(environment.discord);
 
 const scheduler = new SchedulerClient({ region: "us-east-1" });
 

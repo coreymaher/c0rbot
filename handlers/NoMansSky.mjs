@@ -4,10 +4,8 @@ import Discord from "../lib/Discord.mjs";
 import secrets from "../lib/secrets.mjs";
 import { simpleGet, loadFeedData, updateFeedData } from "../lib/utils.mjs";
 
-const discord = new Discord();
-
 const environment = await secrets();
-discord.init(environment.discord);
+const discord = new Discord(environment.discord);
 
 const FEED_NAME = "no-mans-sky_patches";
 const FEED_URL = "https://www.nomanssky.com/feed/";

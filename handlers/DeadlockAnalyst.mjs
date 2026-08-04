@@ -53,8 +53,7 @@ async function getPlayerName(player_id) {
   }
 }
 
-const discord = new Discord();
-discord.init(environment.discord);
+const discord = new Discord(environment.discord);
 
 const llm = new LLMClient({
   openai: environment.openai.apikey,

@@ -16,10 +16,8 @@ const docClient = DynamoDBDocumentClient.from(client);
 
 const openDotaAPI = new OpenDotaAPI(cache);
 
-const discord = new Discord();
-
 const environment = await secrets();
-discord.init(environment.discord);
+const discord = new Discord(environment.discord);
 
 function formatNumber(number) {
   return number >= 1000 ? (number / 1000).toFixed(1) + "k" : number;
