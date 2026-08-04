@@ -16,9 +16,8 @@ const REPO_ROOT = path.resolve(__dirname, "..", "..");
 const FEEDS_TABLE = "feeds-dev";
 const DOTA_PLAYERS_TABLE = "dota-players-dev";
 
-// CloudFormation publishes `environment` as plaintext in the template and the bootstrap
-// assets bucket, so nothing sensitive can go there. Not a CDK resource on purpose:
-// managing the value here would put it back in the template.
+// CloudFormation publishes `environment` as plaintext, so nothing sensitive goes there.
+// Not a CDK resource on purpose: that would put the value back in the template.
 const SECRETS_PARAMETER = "/c0rbot/environment";
 
 interface FunctionOptions {
@@ -108,9 +107,8 @@ export class C0rbotStack extends cdk.Stack {
         depsLockFilePath: path.join(REPO_ROOT, "package-lock.json"),
         bundling: {
           externalModules: ["@aws-sdk/*"],
-          // The banner is not optional: bundled CommonJS (utils.js, OpenDotaAPI.js) keeps
-          // its `require` calls, which esbuild turns into a shim that throws "Dynamic
-          // require of ... is not supported" unless a real `require` is in scope.
+          // Required: bundled CommonJS (utils.js, OpenDotaAPI.js) keeps `require` calls
+          // that esbuild otherwise turns into a throwing shim.
           format: OutputFormat.ESM,
           banner:
             "import{createRequire as ___cr}from'module';const require=___cr(import.meta.url);",
@@ -120,8 +118,7 @@ export class C0rbotStack extends cdk.Stack {
         },
       });
 
-      // No kms:Decrypt grant: the aws/ssm key policy already allows the account directly
-      // for calls arriving through SSM, so repeating it here buys nothing.
+      // No kms:Decrypt needed: the aws/ssm key policy allows this account through SSM.
       fn.addToRolePolicy(
         new iam.PolicyStatement({
           actions: ["ssm:GetParameter"],

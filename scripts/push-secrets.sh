@@ -1,8 +1,6 @@
 #!/bin/bash
 
-# A deploy does not carry config -- this is the only path it takes to production. Running
-# containers also keep the value they fetched at init until they cycle, which `cdk deploy`
-# forces.
+# A deploy does not carry config; this is the only path it takes to production.
 
 set -euo pipefail
 
@@ -11,9 +9,6 @@ PARAMETER="/c0rbot/environment"
 PROFILE=${AWS_PROFILE:-c0rbot-admin}
 REGION=${AWS_REGION:-us-east-1}
 
-# mktemp -d needs no template, so it behaves the same on BSD and GNU, and 0700 on the
-# directory covers both files. The value goes to a file because a --value argument would
-# show in `ps` and shell history.
 WORK=$(mktemp -d)
 TMP="$WORK/value.json"
 PLAINTEXT="$WORK/environment.js"
