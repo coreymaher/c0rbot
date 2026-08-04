@@ -5,6 +5,7 @@ import { DynamoDBDocumentClient, GetCommand } from "@aws-sdk/lib-dynamodb";
 import Discord from "../lib/Discord.js";
 import cache from "../lib/cache.mjs";
 import LLMClient from "../lib/LLMClient.mjs";
+import secrets from "../lib/secrets.mjs";
 import * as DeadlockConstants from "../lib/DeadlockConstants.mjs";
 import DeadlockAPI from "../lib/DeadlockAPI.mjs";
 import {
@@ -17,12 +18,11 @@ import tables from "../lib/tables.js";
 const dbClient = new DynamoDBClient({});
 const docClient = DynamoDBDocumentClient.from(dbClient);
 
-// Instantiate DeadlockAPI with cache
 const deadlockAPI = new DeadlockAPI(cache);
 
 const cacheNamespace = "deadlock-ai-analyzer";
 
-const environment = JSON.parse(process.env.environment);
+const environment = await secrets();
 
 function createTimer(operationName) {
   const start = Date.now();
@@ -81,7 +81,6 @@ export async function handler(event, context) {
       if (cachedAnalysis) {
         const payload = JSON.parse(cachedAnalysis);
 
-        // Add reanalyze button to cached response if user is admin
         if (user_id === environment.discord.adminUserId) {
           payload.components = [
             {
@@ -168,7 +167,6 @@ export async function handler(event, context) {
     const itemsData = await loadItems({ cache });
     itemsTimer.end();
 
-    // Fetch popular items for meta context
     const popularItemsTimer = createTimer("popular items loading");
     const avgBadge = Math.round(
       (matchData.average_badge_team0 + matchData.average_badge_team1) / 2,
@@ -253,7 +251,6 @@ export async function handler(event, context) {
     let errorMessage =
       "Ran into an issue analyzing this match. Try again later.";
 
-    // Provide detailed error info for admin users
     if (user_id === environment.discord.adminUserId) {
       const errMsg = err.message?.slice(0, 500) || "Unknown error";
       errorMessage = `**Admin Debug Info:**\n\`\`\`\nError: ${errMsg}\nMatch ID: ${match_id}\nPlayer ID: ${player_id}\n\`\`\``;
@@ -269,8 +266,6 @@ export async function handler(event, context) {
   }
 }
 
-// All business logic has been extracted to ../lib/DeadlockMatchProcessor.mjs
-
 async function analyzeMatch(compactMatch, playerName) {
   const prompt = generateAnalysisPrompt(compactMatch, playerName);
 
@@ -278,7 +273,6 @@ async function analyzeMatch(compactMatch, playerName) {
 
   const response = await llm.call(prompt, "gemini-2.5-flash");
 
-  // Log token usage analytics
   if (response.usage) {
     const usage = response.usage;
     const cachedTokens = usage.cached_tokens;

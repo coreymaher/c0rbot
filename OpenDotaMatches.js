@@ -13,13 +13,9 @@ const tables = require("./lib/tables.js");
 // Loaded dynamically since DotaConstants is now ESM
 let DotaConstants;
 
-const environment = JSON.parse(process.env.environment);
-
 const client = new DynamoDBClient({});
 const discord = new Discord();
 const docClient = DynamoDBDocumentClient.from(client);
-
-discord.init(environment.discord);
 
 function formatNumber(number) {
   return number >= 1000 ? (number / 1000).toFixed(1) + "k" : number;
@@ -88,7 +84,6 @@ function loadRecentMatches(data) {
       );
 
       if (newMatches.length > 0) {
-        // Add matches to data.matches
         newMatches.forEach((match) => {
           data.matches[match.match_id] = {};
           console.log(
@@ -96,7 +91,6 @@ function loadRecentMatches(data) {
           );
         });
 
-        // Store user with array of new match IDs, sorted oldest to newest
         const sortedMatchIDs = newMatches
           .map((match) => match.match_id)
           .sort((a, b) => a - b); // Sort ascending (oldest first)
@@ -162,7 +156,6 @@ function sendDiscordMessage(data) {
   Object.keys(data.users).forEach((steamID) => {
     const user = data.users[steamID];
 
-    // Create a message promise for each match this user has
     user.matches.forEach((matchID) => {
       const match = data.matches[matchID];
       messagePromises.push(
@@ -267,14 +260,12 @@ function sendDiscordMessage(data) {
     if (rankTiers.length > 1) {
       const totalTierIndex = rankTiers
         .map((rank) => {
-          // Convert tier to discrete range
           return DotaConstants.rankTierValues.indexOf(rank); // Conv
         })
         .reduce((total, rank) => {
           return (total += rank);
         }, 0);
       const estimatedTierIndex = Math.round(totalTierIndex / rankTiers.length);
-      // Convert tier index back into tier rank value
       const estimatedTier = DotaConstants.rankTierValues[estimatedTierIndex];
       const tier = Math.floor(estimatedTier / 10);
       const subTier = estimatedTier % 10;
@@ -328,7 +319,6 @@ function updateDB(data) {
   const userPromises = Object.keys(data.users).map((steamID) => {
     const user = data.users[steamID];
 
-    // Find the highest match ID for this user
     const maxMatchID = Math.max(...user.matches);
 
     const params = {
@@ -362,7 +352,6 @@ function updateDB(data) {
 }
 
 module.exports = async () => {
-  // Load ESM module dynamically
   if (!DotaConstants) {
     DotaConstants = (await import("./lib/DotaConstants.mjs")).default;
   }
@@ -383,3 +372,5 @@ module.exports = async () => {
     .then(updateDB)
     .then(() => ({ message: "Done" }));
 };
+
+module.exports.init = (environment) => discord.init(environment.discord);

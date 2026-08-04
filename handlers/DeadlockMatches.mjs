@@ -15,12 +15,13 @@ import { simpleGet } from "../utils.js";
 import * as constants from "../lib/DeadlockConstants.mjs";
 import DeadlockAPI from "../lib/DeadlockAPI.mjs";
 import cache from "../lib/cache.mjs";
+import secrets from "../lib/secrets.mjs";
 import tables from "../lib/tables.js";
 
 const discord = new Discord();
 const deadlockAPI = new DeadlockAPI(cache);
 
-const environment = JSON.parse(process.env.environment);
+const environment = await secrets();
 discord.init(environment.discord);
 
 const scanParams = {
@@ -223,7 +224,6 @@ export async function handler() {
 
     const data = JSON.parse(content);
 
-    // Validate that data is an array
     if (!Array.isArray(data)) {
       console.error(
         `Unexpected API response for ${user.name} (${user.player_id}):`,

@@ -1,11 +1,12 @@
 "use strict";
 
 import Discord from "../lib/Discord.js";
+import secrets from "../lib/secrets.mjs";
 import { simpleGet, loadFeedData, updateFeedData } from "../utils.js";
 
 const discord = new Discord();
 
-const environment = JSON.parse(process.env.environment);
+const environment = await secrets();
 discord.init(environment.discord);
 
 // Steam event types - https://github.com/SteamDatabase/Protobufs (EProtoClanEventType)
@@ -189,7 +190,6 @@ async function processGame(game) {
     let hasNewEvents = false;
     const updatedTracking = { ...lastSeenByType };
 
-    // Check each event type we're tracking
     for (const eventType of game.eventTypes) {
       // Steam returns events newest-first, so the stored gid acts as a
       // watermark: everything above it in the list is still unposted.
@@ -247,7 +247,6 @@ async function processGame(game) {
       }
     }
 
-    // Save updated tracking if we posted any new events
     if (hasNewEvents) {
       await updateFeedData(game.key, updatedTracking);
     }

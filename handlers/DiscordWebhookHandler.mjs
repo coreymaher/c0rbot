@@ -1,10 +1,11 @@
 "use strict";
 
 import { LambdaClient, InvokeCommand } from "@aws-sdk/client-lambda";
+import secrets from "../lib/secrets.mjs";
 
 const lambda = new LambdaClient({});
 
-const environment = JSON.parse(process.env.environment);
+const environment = await secrets();
 
 const hexToBytes = (hex) => Uint8Array.from(Buffer.from(hex, "hex"));
 const publicKey = hexToBytes(environment.discord.publicKey);
@@ -87,16 +88,13 @@ export async function handler(event) {
 
   const [action, matchId, playerId] = parts;
 
-  // Determine game type and action
   let functionName;
   let isReanalyze;
 
   if (action === "ai" || action === "reanalyze") {
-    // Dota
     functionName = process.env.DOTA_ANALYST_FUNCTION_NAME;
     isReanalyze = action === "reanalyze";
   } else if (action === "ai_dl" || action === "reanalyze_dl") {
-    // Deadlock
     functionName = process.env.DEADLOCK_ANALYST_FUNCTION_NAME;
     isReanalyze = action === "reanalyze_dl";
   } else {

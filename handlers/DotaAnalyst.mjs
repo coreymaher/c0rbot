@@ -4,6 +4,7 @@ import Discord from "../lib/Discord.js";
 import cache from "../lib/cache.mjs";
 import OpenDotaAPI from "../lib/OpenDotaAPI.mjs";
 import LLMClient from "../lib/LLMClient.mjs";
+import secrets from "../lib/secrets.mjs";
 import DotaConstants from "../lib/DotaConstants.mjs";
 import {
   processPopularItems,
@@ -19,7 +20,7 @@ import crypto from "crypto";
 
 const cacheNamespace = "dota-ai-analyzer";
 
-const environment = JSON.parse(process.env.environment);
+const environment = await secrets();
 
 function createTimer(operationName) {
   const start = Date.now();
@@ -37,7 +38,6 @@ discord.init(environment.discord);
 
 const scheduler = new SchedulerClient({ region: "us-east-1" });
 
-// Instantiate OpenDotaAPI with cache
 const openDotaAPI = new OpenDotaAPI(cache);
 
 const llm = new LLMClient({
@@ -68,7 +68,6 @@ export async function handler(event, context) {
   } = event;
 
   try {
-    // Clean up EventBridge rule if this is a retry attempt
     if (retryAttempt) {
       console.log(`Retry attempt for match ${match_id}`);
       await cleanupEventBridgeRule(match_id, player_id, interaction_token);
@@ -81,7 +80,6 @@ export async function handler(event, context) {
       if (cachedAnalysis) {
         const payload = JSON.parse(cachedAnalysis);
 
-        // Add reanalyze button to cached response if user is admin
         if (user_id === environment.discord.adminUserId) {
           payload.components = [
             {
@@ -126,7 +124,6 @@ export async function handler(event, context) {
       parseTimer.end();
 
       if (retryAttempt) {
-        // This is already a retry attempt, use existing error message
         await discord.sendInteractionResponse(
           application_id,
           interaction_token,
@@ -137,7 +134,6 @@ export async function handler(event, context) {
           },
         );
       } else {
-        // First attempt, schedule a retry
         await scheduleRetryAnalysis(
           {
             application_id,
@@ -255,7 +251,6 @@ export async function handler(event, context) {
     let errorMessage =
       "Ran into an issue analyzing this match. Try again later.";
 
-    // Provide detailed error info for admin users
     if (user_id === environment.discord.adminUserId) {
       const errMsg = err.message?.slice(0, 500) || "Unknown error";
       errorMessage = `**Admin Debug Info:**\n\`\`\`\nError: ${errMsg}\nMatch ID: ${match_id}\nPlayer ID: ${player_id}\n\`\`\``;
@@ -270,8 +265,6 @@ export async function handler(event, context) {
     throw err;
   }
 }
-
-// All business logic has been extracted to ../lib/DotaMatchProcessor.mjs
 
 async function analyzeMatch(match, playerId, playerName, fullMatch) {
   const promptTimer = createTimer("prompt generation");
@@ -292,7 +285,6 @@ async function analyzeMatch(match, playerId, playerName, fullMatch) {
 
   const response = await llm.call(prompt, "gemini-2.5-flash");
 
-  // Log token usage analytics
   if (response.usage) {
     const usage = response.usage;
     const cachedTokens = usage.cached_tokens;
@@ -318,7 +310,6 @@ async function scheduleRetryAnalysis(eventPayload, context) {
   const scheduleTime = new Date(Date.now() + 2 * 60 * 1000); // 2 minutes from now
 
   try {
-    // Create the EventBridge Scheduler schedule
     await scheduler.send(
       new CreateScheduleCommand({
         Name: ruleName,

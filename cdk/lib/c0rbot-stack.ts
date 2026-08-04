@@ -1,4 +1,3 @@
-import * as fs from "fs";
 import * as path from "path";
 import * as cdk from "aws-cdk-lib";
 import { Construct } from "constructs";
@@ -11,20 +10,13 @@ import { NodejsFunction, OutputFormat } from "aws-cdk-lib/aws-lambda-nodejs";
 import * as logs from "aws-cdk-lib/aws-logs";
 
 const REPO_ROOT = path.resolve(__dirname, "..", "..");
-const ENV_FILE = path.join(REPO_ROOT, "environment.js");
-
-if (!fs.existsSync(ENV_FILE)) {
-  throw new Error(`${ENV_FILE} not found. Run \`npm run decrypt\` first.`);
-}
-
-// Requires `npm run decrypt` first. Exports a function returning the env vars.
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const { environment } = require(ENV_FILE);
 
 // These two tables carry a `-dev` suffix the others do not. Renaming a DynamoDB
 // table means recreating it and migrating the data, so the names stay as they are.
 const FEEDS_TABLE = "feeds-dev";
 const DOTA_PLAYERS_TABLE = "dota-players-dev";
+
+const SECRETS_PARAMETER = "/c0rbot/environment";
 
 interface FunctionOptions {
   /** Path relative to the repo root. */
@@ -37,8 +29,6 @@ interface FunctionOptions {
 export class C0rbotStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props: cdk.StackProps) {
     super(scope, id, props);
-
-    const secrets: Record<string, string> = environment();
 
     // Changing a table name or key schema here replaces the table, losing its contents.
     const str = (name: string): dynamodb.Attribute => ({
@@ -89,8 +79,8 @@ export class C0rbotStack extends cdk.Stack {
     const schedulerRoleName = "c0rbot-scheduler-role";
     const schedulerRoleArn = `arn:aws:iam::${this.account}:role/${schedulerRoleName}`;
 
-    const makeFunction = (name: string, opts: FunctionOptions) =>
-      new NodejsFunction(this, name, {
+    const makeFunction = (name: string, opts: FunctionOptions) => {
+      const fn = new NodejsFunction(this, name, {
         functionName: `c0rbot-${name}`,
         entry: path.join(REPO_ROOT, opts.entry),
         handler: "handler",
@@ -105,7 +95,7 @@ export class C0rbotStack extends cdk.Stack {
         }),
         timeout: cdk.Duration.seconds(opts.timeout ?? 30),
         environment: {
-          ...secrets,
+          SECRETS_PARAMETER,
           CACHE_TABLE: cache.tableName,
           CONFIG_TABLE: config.tableName,
           MATCHES_TABLE: matches.tableName,
@@ -115,12 +105,29 @@ export class C0rbotStack extends cdk.Stack {
         depsLockFilePath: path.join(REPO_ROOT, "package-lock.json"),
         bundling: {
           externalModules: ["@aws-sdk/*"],
-          format: OutputFormat.CJS,
+          // Required: bundled CommonJS (utils.js, OpenDotaAPI.js) keeps `require` calls
+          // that esbuild otherwise turns into a throwing shim.
+          format: OutputFormat.ESM,
+          banner:
+            "import{createRequire as ___cr}from'module';const require=___cr(import.meta.url);",
           target: "node24",
           minify: false,
           sourceMap: false,
         },
       });
+
+      // No kms:Decrypt needed: the aws/ssm key policy allows this account through SSM.
+      fn.addToRolePolicy(
+        new iam.PolicyStatement({
+          actions: ["ssm:GetParameter"],
+          resources: [
+            `arn:aws:ssm:${this.region}:${this.account}:parameter${SECRETS_PARAMETER}`,
+          ],
+        }),
+      );
+
+      return fn;
+    };
 
     const openDotaMatches = makeFunction("openDotaMatches", {
       entry: "handlers/OpenDotaMatches.mjs",

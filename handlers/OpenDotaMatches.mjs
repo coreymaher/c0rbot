@@ -1,7 +1,9 @@
 "use strict";
 
-// Adapter. OpenDotaMatches.js exports its handler as a bare `module.exports = fn`,
-// which NodejsFunction cannot target -- it needs a named export.
+// Adapter: NodejsFunction needs a named export, and CommonJS cannot use top-level await.
 import openDotaMatches from "../OpenDotaMatches.js";
+import secrets from "../lib/secrets.mjs";
+
+openDotaMatches.init(await secrets());
 
 export const handler = openDotaMatches;
