@@ -380,7 +380,5 @@ module.exports = async () => {
     .then(() => ({ message: "Done" }));
 };
 
-// Config arrives from the caller rather than being read here: it comes from SSM, and this
-// file is CommonJS, which esbuild wraps in a closure that cannot use top-level await.
-// handlers/OpenDotaMatches.mjs does the await and calls this.
+// Called by handlers/OpenDotaMatches.mjs, which explains why config arrives this way.
 module.exports.init = (environment) => discord.init(environment.discord);

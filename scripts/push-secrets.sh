@@ -1,13 +1,10 @@
 #!/bin/bash
 
-# Push the SOPS-encrypted config into the SSM parameter the Lambdas read at init.
+# Push the SOPS-encrypted config into the SSM parameter the Lambdas read at init. This is
+# the only path config takes to production -- a deploy does not carry it.
 #
-# environment.js.enc stays the source of truth; this is how it reaches AWS. Nothing here
-# touches the stack -- rotating a key is `npm run encrypt && npm run secrets:push`, with
-# no deploy. Running containers keep the value they fetched until they cycle; force it
-# sooner with a `cdk deploy`, which replaces them.
-#
-# Usage: ./push-secrets.sh
+# Rotating a key is `npm run encrypt && npm run secrets:push`, no deploy. Running
+# containers keep the value they fetched until they cycle; `cdk deploy` replaces them.
 
 set -euo pipefail
 
@@ -16,14 +13,9 @@ PARAMETER="/c0rbot/environment"
 PROFILE=${AWS_PROFILE:-c0rbot-admin}
 REGION=${AWS_REGION:-us-east-1}
 
-# One directory rather than two temp files: mktemp -d takes no template, so it behaves the
-# same on BSD and GNU, and 0700 on the directory is what keeps both files private.
-#
-# TMP holds the value for `aws ssm put-parameter`, written to a file rather than passed on
-# the command line, where a --value argument is visible in `ps` and lands in shell history.
-# PLAINTEXT is the decrypted module, read for the same `environment()` export the stack
-# used to consume so this stays in step with whatever shape that file has -- it needs a
-# real .js name because node requires it.
+# One 0700 directory, because mktemp -d needs no template and so behaves the same on BSD
+# and GNU. TMP exists so the secret is never a --value argument, where it would show in
+# `ps` and shell history; PLAINTEXT needs a real .js name because node requires it.
 WORK=$(mktemp -d)
 TMP="$WORK/value.json"
 PLAINTEXT="$WORK/environment.js"

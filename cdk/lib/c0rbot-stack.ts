@@ -16,10 +16,10 @@ const REPO_ROOT = path.resolve(__dirname, "..", "..");
 const FEEDS_TABLE = "feeds-dev";
 const DOTA_PLAYERS_TABLE = "dota-players-dev";
 
-// One SecureString holding the config blob that used to be spread onto every function as
-// plaintext -- and therefore published in the template and the bootstrap assets bucket.
-// Deliberately not a CDK resource: managing the value here would put it back in the
-// template. `npm run secrets:push` writes it; this stack only references the name.
+// Nothing sensitive belongs in `environment` below: CloudFormation publishes it as
+// plaintext in the template and the bootstrap assets bucket. Secrets go in this
+// SecureString instead, written by `npm run secrets:push` -- deliberately not a CDK
+// resource, since managing the value here would put it back in the template.
 const SECRETS_PARAMETER = "/c0rbot/environment";
 
 interface FunctionOptions {
@@ -110,9 +110,9 @@ export class C0rbotStack extends cdk.Stack {
         bundling: {
           externalModules: ["@aws-sdk/*"],
           // ESM so handlers can `await secrets()` at module scope. The banner is not
-          // optional: bundled CommonJS (utils.js, Discord.js) keeps its `require` calls,
-          // which esbuild turns into a shim that throws "Dynamic require of ... is not
-          // supported" in ESM output unless a real `require` is in scope.
+          // optional: bundled CommonJS (utils.js, OpenDotaAPI.js) keeps its `require`
+          // calls, which esbuild turns into a shim that throws "Dynamic require of ... is
+          // not supported" unless a real `require` is in scope.
           format: OutputFormat.ESM,
           banner:
             "import{createRequire as ___cr}from'module';const require=___cr(import.meta.url);",
@@ -122,9 +122,8 @@ export class C0rbotStack extends cdk.Stack {
         },
       });
 
-      // Config is fetched at init rather than injected, so every function needs to read
-      // the one parameter. No kms:Decrypt grant: the aws/ssm key policy allows the account
-      // directly for calls that arrive through SSM, so repeating it here buys nothing.
+      // No kms:Decrypt grant: the aws/ssm key policy already allows the account directly
+      // for calls arriving through SSM, so repeating it here buys nothing.
       fn.addToRolePolicy(
         new iam.PolicyStatement({
           actions: ["ssm:GetParameter"],
