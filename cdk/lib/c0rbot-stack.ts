@@ -105,7 +105,6 @@ export class C0rbotStack extends cdk.Stack {
         depsLockFilePath: path.join(REPO_ROOT, "package-lock.json"),
         bundling: {
           externalModules: ["@aws-sdk/*"],
-          // Handlers `await secrets()` at module scope, which CommonJS cannot do.
           format: OutputFormat.ESM,
           target: "node24",
           minify: false,
