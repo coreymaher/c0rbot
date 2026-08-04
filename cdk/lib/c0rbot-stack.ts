@@ -1,4 +1,3 @@
-import * as fs from "fs";
 import * as path from "path";
 import * as cdk from "aws-cdk-lib";
 import { Construct } from "constructs";
@@ -11,20 +10,17 @@ import { NodejsFunction, OutputFormat } from "aws-cdk-lib/aws-lambda-nodejs";
 import * as logs from "aws-cdk-lib/aws-logs";
 
 const REPO_ROOT = path.resolve(__dirname, "..", "..");
-const ENV_FILE = path.join(REPO_ROOT, "environment.js");
-
-if (!fs.existsSync(ENV_FILE)) {
-  throw new Error(`${ENV_FILE} not found. Run \`npm run decrypt\` first.`);
-}
-
-// Requires `npm run decrypt` first. Exports a function returning the env vars.
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const { environment } = require(ENV_FILE);
 
 // These two tables carry a `-dev` suffix the others do not. Renaming a DynamoDB
 // table means recreating it and migrating the data, so the names stay as they are.
 const FEEDS_TABLE = "feeds-dev";
 const DOTA_PLAYERS_TABLE = "dota-players-dev";
+
+// One SecureString holding the config blob that used to be spread onto every function as
+// plaintext -- and therefore published in the template and the bootstrap assets bucket.
+// Deliberately not a CDK resource: managing the value here would put it back in the
+// template. `npm run secrets:push` writes it; this stack only references the name.
+const SECRETS_PARAMETER = "/c0rbot/environment";
 
 interface FunctionOptions {
   /** Path relative to the repo root. */
@@ -37,8 +33,6 @@ interface FunctionOptions {
 export class C0rbotStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props: cdk.StackProps) {
     super(scope, id, props);
-
-    const secrets: Record<string, string> = environment();
 
     // Changing a table name or key schema here replaces the table, losing its contents.
     const str = (name: string): dynamodb.Attribute => ({
@@ -89,8 +83,8 @@ export class C0rbotStack extends cdk.Stack {
     const schedulerRoleName = "c0rbot-scheduler-role";
     const schedulerRoleArn = `arn:aws:iam::${this.account}:role/${schedulerRoleName}`;
 
-    const makeFunction = (name: string, opts: FunctionOptions) =>
-      new NodejsFunction(this, name, {
+    const makeFunction = (name: string, opts: FunctionOptions) => {
+      const fn = new NodejsFunction(this, name, {
         functionName: `c0rbot-${name}`,
         entry: path.join(REPO_ROOT, opts.entry),
         handler: "handler",
@@ -105,7 +99,7 @@ export class C0rbotStack extends cdk.Stack {
         }),
         timeout: cdk.Duration.seconds(opts.timeout ?? 30),
         environment: {
-          ...secrets,
+          SECRETS_PARAMETER,
           CACHE_TABLE: cache.tableName,
           CONFIG_TABLE: config.tableName,
           MATCHES_TABLE: matches.tableName,
@@ -115,12 +109,45 @@ export class C0rbotStack extends cdk.Stack {
         depsLockFilePath: path.join(REPO_ROOT, "package-lock.json"),
         bundling: {
           externalModules: ["@aws-sdk/*"],
-          format: OutputFormat.CJS,
+          // ESM so handlers can `await secrets()` at module scope. The banner is not
+          // optional: bundled CommonJS (utils.js, Discord.js) keeps its `require` calls,
+          // which esbuild turns into a shim that throws "Dynamic require of ... is not
+          // supported" in ESM output unless a real `require` is in scope.
+          format: OutputFormat.ESM,
+          banner:
+            "import{createRequire as ___cr}from'module';const require=___cr(import.meta.url);",
           target: "node24",
           minify: false,
           sourceMap: false,
         },
       });
+
+      // Config is fetched at init rather than injected, so every function needs to read
+      // the one parameter. kms:Decrypt is belt and braces: the aws/ssm key policy already
+      // allows the account through SSM, but the grant costs nothing and removes a
+      // dependency on that policy staying as it is.
+      fn.addToRolePolicy(
+        new iam.PolicyStatement({
+          actions: ["ssm:GetParameter"],
+          resources: [
+            `arn:aws:ssm:${this.region}:${this.account}:parameter${SECRETS_PARAMETER}`,
+          ],
+        }),
+      );
+      fn.addToRolePolicy(
+        new iam.PolicyStatement({
+          actions: ["kms:Decrypt"],
+          resources: ["*"],
+          conditions: {
+            StringEquals: {
+              "kms:ViaService": `ssm.${this.region}.amazonaws.com`,
+            },
+          },
+        }),
+      );
+
+      return fn;
+    };
 
     const openDotaMatches = makeFunction("openDotaMatches", {
       entry: "handlers/OpenDotaMatches.mjs",

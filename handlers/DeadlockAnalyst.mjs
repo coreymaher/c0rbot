@@ -5,6 +5,7 @@ import { DynamoDBDocumentClient, GetCommand } from "@aws-sdk/lib-dynamodb";
 import Discord from "../lib/Discord.js";
 import cache from "../lib/cache.mjs";
 import LLMClient from "../lib/LLMClient.mjs";
+import secrets from "../lib/secrets.mjs";
 import * as DeadlockConstants from "../lib/DeadlockConstants.mjs";
 import DeadlockAPI from "../lib/DeadlockAPI.mjs";
 import {
@@ -22,7 +23,7 @@ const deadlockAPI = new DeadlockAPI(cache);
 
 const cacheNamespace = "deadlock-ai-analyzer";
 
-const environment = JSON.parse(process.env.environment);
+const environment = await secrets();
 
 function createTimer(operationName) {
   const start = Date.now();

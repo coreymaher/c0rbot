@@ -4,6 +4,7 @@ import Discord from "../lib/Discord.js";
 import cache from "../lib/cache.mjs";
 import OpenDotaAPI from "../lib/OpenDotaAPI.mjs";
 import LLMClient from "../lib/LLMClient.mjs";
+import secrets from "../lib/secrets.mjs";
 import DotaConstants from "../lib/DotaConstants.mjs";
 import {
   processPopularItems,
@@ -19,7 +20,7 @@ import crypto from "crypto";
 
 const cacheNamespace = "dota-ai-analyzer";
 
-const environment = JSON.parse(process.env.environment);
+const environment = await secrets();
 
 function createTimer(operationName) {
   const start = Date.now();

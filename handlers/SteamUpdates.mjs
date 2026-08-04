@@ -1,11 +1,12 @@
 "use strict";
 
 import Discord from "../lib/Discord.js";
+import secrets from "../lib/secrets.mjs";
 import { simpleGet, loadFeedData, updateFeedData } from "../utils.js";
 
 const discord = new Discord();
 
-const environment = JSON.parse(process.env.environment);
+const environment = await secrets();
 discord.init(environment.discord);
 
 // Steam event types - https://github.com/SteamDatabase/Protobufs (EProtoClanEventType)

@@ -1,10 +1,11 @@
 "use strict";
 
 import { LambdaClient, InvokeCommand } from "@aws-sdk/client-lambda";
+import secrets from "../lib/secrets.mjs";
 
 const lambda = new LambdaClient({});
 
-const environment = JSON.parse(process.env.environment);
+const environment = await secrets();
 
 const hexToBytes = (hex) => Uint8Array.from(Buffer.from(hex, "hex"));
 const publicKey = hexToBytes(environment.discord.publicKey);

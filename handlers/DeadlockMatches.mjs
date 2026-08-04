@@ -15,12 +15,13 @@ import { simpleGet } from "../utils.js";
 import * as constants from "../lib/DeadlockConstants.mjs";
 import DeadlockAPI from "../lib/DeadlockAPI.mjs";
 import cache from "../lib/cache.mjs";
+import secrets from "../lib/secrets.mjs";
 import tables from "../lib/tables.js";
 
 const discord = new Discord();
 const deadlockAPI = new DeadlockAPI(cache);
 
-const environment = JSON.parse(process.env.environment);
+const environment = await secrets();
 discord.init(environment.discord);
 
 const scanParams = {

@@ -13,13 +13,9 @@ const tables = require("./lib/tables.js");
 // Loaded dynamically since DotaConstants is now ESM
 let DotaConstants;
 
-const environment = JSON.parse(process.env.environment);
-
 const client = new DynamoDBClient({});
 const discord = new Discord();
 const docClient = DynamoDBDocumentClient.from(client);
-
-discord.init(environment.discord);
 
 function formatNumber(number) {
   return number >= 1000 ? (number / 1000).toFixed(1) + "k" : number;
@@ -383,3 +379,8 @@ module.exports = async () => {
     .then(updateDB)
     .then(() => ({ message: "Done" }));
 };
+
+// Config arrives from the caller rather than being read here: it comes from SSM, and this
+// file is CommonJS, which esbuild wraps in a closure that cannot use top-level await.
+// handlers/OpenDotaMatches.mjs does the await and calls this.
+module.exports.init = (environment) => discord.init(environment.discord);
