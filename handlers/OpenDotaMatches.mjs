@@ -152,6 +152,18 @@ function createDiscordMessageForMatch(steamID, user, matchID, match, config) {
     (player) => player.account_id == steamID,
   );
 
+  // OpenDota reports account_id as null for players who have not exposed their match
+  // data, so a tracked player can be missing from their own match. Skip that match
+  // rather than dereferencing undefined: every embed is built before the first send,
+  // so one throw here would drop the whole run's notifications, and it would throw
+  // again on every retry because updateDB never advances past the match.
+  if (!dotaPlayer) {
+    console.error(
+      `No player ${steamID} in match ${matchID}, skipping notification`,
+    );
+    return null;
+  }
+
   const skill = DotaConstants.skillIDs[match.skill];
   const lobby = DotaConstants.lobbyTypes[match.lobby_type];
   const gameMode = getGameMode(match.game_mode, config);
@@ -283,15 +295,17 @@ async function sendDiscordMessages(users, matches, config) {
     const user = users[steamID];
 
     user.matches.forEach((matchID) => {
-      messages.push(
-        createDiscordMessageForMatch(
-          steamID,
-          user,
-          matchID,
-          matches[matchID],
-          config,
-        ),
+      const message = createDiscordMessageForMatch(
+        steamID,
+        user,
+        matchID,
+        matches[matchID],
+        config,
       );
+
+      if (message) {
+        messages.push(message);
+      }
     });
   });
 
