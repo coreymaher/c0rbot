@@ -1,4 +1,5 @@
 import LLMClient from "../lib/LLMClient.mjs";
+import { ANALYSIS_SCHEMA } from "../lib/analysis.mjs";
 import OpenDotaAPI from "../lib/OpenDotaAPI.mjs";
 import DeadlockAPI from "../lib/DeadlockAPI.mjs";
 import NoOpCache from "./lib/NoOpCache.mjs";
@@ -42,9 +43,11 @@ const MODELS = [
   "claude-sonnet-4-5",
   "gemini-2.5-pro",
   "gemini-2.5-flash",
+  "gemini-3.5-flash",
+  "gemini-3.6-flash",
 ];
 
-// Pricing per million tokens (as of October 2025)
+// Pricing per million tokens (as of August 2026)
 // Source: Provider pricing pages
 const PRICING = {
   "gpt-5": { input: 2.5, output: 10.0 },
@@ -53,9 +56,12 @@ const PRICING = {
   "claude-opus-4-1": { input: 15.0, output: 75.0 },
   "claude-sonnet-4-5": { input: 3.0, output: 15.0 },
   "claude-haiku-4-5": { input: 0.8, output: 4.0 },
-  "gemini-2.5-pro": { input: 1.25, output: 5.0 },
-  "gemini-2.5-flash": { input: 0.075, output: 0.3 },
-  "gemini-2.5-flash-lite": { input: 0.0375, output: 0.15 },
+  "gemini-2.5-pro": { input: 1.25, output: 10.0 },
+  "gemini-2.5-flash": { input: 0.3, output: 2.5 },
+  "gemini-2.5-flash-lite": { input: 0.1, output: 0.4 },
+  "gemini-3.5-flash": { input: 1.5, output: 9.0 },
+  "gemini-3.5-flash-lite": { input: 0.3, output: 2.5 },
+  "gemini-3.6-flash": { input: 1.5, output: 7.5 },
 };
 
 /**
@@ -71,7 +77,11 @@ function calculateCost(model, tokens) {
   }
 
   const inputCost = (tokens.prompt_tokens / 1_000_000) * pricing.input;
-  const outputCost = (tokens.completion_tokens / 1_000_000) * pricing.output;
+  // Thinking tokens bill as output but are reported separately, so a reasoning
+  // model looks ~5x cheaper than it is if they are left out.
+  const outputTokens =
+    tokens.completion_tokens + (tokens.reasoning_tokens || 0);
+  const outputCost = (outputTokens / 1_000_000) * pricing.output;
 
   return inputCost + outputCost;
 }
@@ -350,7 +360,7 @@ async function runEvaluation(args) {
       console.log(`\nTesting ${model}...`);
 
       try {
-        const result = await llm.call(match.prompt, model);
+        const result = await llm.call(match.prompt, model, ANALYSIS_SCHEMA);
 
         const cost = calculateCost(model, result.usage);
 
