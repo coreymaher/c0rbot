@@ -5,7 +5,11 @@ import { DynamoDBDocumentClient, GetCommand } from "@aws-sdk/lib-dynamodb";
 import Discord from "../lib/Discord.mjs";
 import cache from "../lib/cache.mjs";
 import LLMClient from "../lib/LLMClient.mjs";
-import { ANALYSIS_SCHEMA, ANALYSIS_MODELS } from "../lib/analysis.mjs";
+import {
+  ANALYSIS_SCHEMA,
+  ANALYSIS_MODELS,
+  analysisFields,
+} from "../lib/analysis.mjs";
 import secrets from "../lib/secrets.mjs";
 import * as DeadlockConstants from "../lib/DeadlockConstants.mjs";
 import DeadlockAPI from "../lib/DeadlockAPI.mjs";
@@ -199,18 +203,7 @@ export async function handler(event, context) {
             ? `Match Analysis - ${playerName} - ${playerHero}`
             : `Match Analysis - ${playerHero}`,
           description: analysis.summary,
-          fields: [
-            { name: "Highlights", items: analysis.strengths },
-            { name: "Focus areas", items: analysis.weaknesses },
-            { name: "Recommendations", items: analysis.recommendations },
-          ]
-            // Discord rejects an embed field with an empty value, which would
-            // lose the whole analysis over one section the model left empty.
-            .filter(({ items }) => items?.length)
-            .map(({ name, items }) => ({
-              name,
-              value: items.map((txt) => `- ${txt}`).join("\n"),
-            })),
+          fields: analysisFields(analysis),
         },
       ],
       allowed_mentions: { parse: [] },
