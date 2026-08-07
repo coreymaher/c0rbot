@@ -291,6 +291,7 @@ async function analyzeMatch(match, playerId, playerName, fullMatch) {
       total_tokens: usage.total_tokens,
       prompt_tokens: usage.prompt_tokens,
       completion_tokens: usage.completion_tokens,
+      reasoning_tokens: usage.reasoning_tokens,
       cached_tokens: cachedTokens,
       cache_hit_rate:
         cachedTokens > 0
