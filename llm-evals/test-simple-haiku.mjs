@@ -1,14 +1,14 @@
-import LLMClient from '../lib/LLMClient.mjs';
-import fs from 'fs/promises';
-import path from 'path';
-import { fileURLToPath } from 'url';
-import { createRequire } from 'module';
+import LLMClient from "../lib/LLMClient.mjs";
+import fs from "fs/promises";
+import path from "path";
+import { fileURLToPath } from "url";
+import { createRequire } from "module";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // Load environment for API keys
 const require = createRequire(import.meta.url);
-const environmentConfig = require('../environment.js');
+const environmentConfig = require("../environment.js");
 const environment = JSON.parse(environmentConfig.environment().environment);
 
 // Create LLM client with API keys
@@ -20,44 +20,46 @@ const llm = new LLMClient({
 
 // Models to test
 const MODELS = [
-  'gpt-5',
-  'gpt-5-mini',
-  'gpt-5-nano',
-  'claude-sonnet-4-5',
-  'claude-haiku-4-5',
-  'gemini-2.5-pro',
-  'gemini-2.5-flash',
-  'gemini-2.5-flash-lite',
+  "gpt-5",
+  "gpt-5-mini",
+  "gpt-5-nano",
+  "claude-sonnet-4-5",
+  "claude-haiku-4-5",
+  "gemini-2.5-pro",
+  "gemini-2.5-flash",
+  "gemini-2.5-flash-lite",
 ];
 
 // Test prompts (simulates multi-match evaluation)
 const TEST_PROMPTS = [
   {
-    id: 'dota-haiku',
-    name: 'Dota 2 Haiku',
+    id: "dota-haiku",
+    name: "Dota 2 Haiku",
     prompt: [
       {
-        role: 'user',
-        content: 'Write me a haiku about Dota 2. Return ONLY a JSON object with a single field "haiku" containing the haiku text. No markdown formatting, no code fences, just the raw JSON.',
+        role: "user",
+        content:
+          'Write me a haiku about Dota 2. Return ONLY a JSON object with a single field "haiku" containing the haiku text. No markdown formatting, no code fences, just the raw JSON.',
       },
     ],
   },
   {
-    id: 'deadlock-haiku',
-    name: 'Deadlock Haiku',
+    id: "deadlock-haiku",
+    name: "Deadlock Haiku",
     prompt: [
       {
-        role: 'user',
-        content: 'Write me a haiku about Deadlock, the third-person hero shooter MOBA game by Valve. Return ONLY a JSON object with a single field "haiku" containing the haiku text. No markdown formatting, no code fences, just the raw JSON.',
+        role: "user",
+        content:
+          'Write me a haiku about Deadlock, the third-person hero shooter MOBA game by Valve. Return ONLY a JSON object with a single field "haiku" containing the haiku text. No markdown formatting, no code fences, just the raw JSON.',
       },
     ],
   },
 ];
 
 async function testModel(model, promptInfo) {
-  console.log(`\n${'='.repeat(80)}`);
+  console.log(`\n${"=".repeat(80)}`);
   console.log(`Testing: ${model} - ${promptInfo.name}`);
-  console.log('='.repeat(80));
+  console.log("=".repeat(80));
 
   try {
     console.log(`Calling API...`);
@@ -74,7 +76,7 @@ async function testModel(model, promptInfo) {
 
     return {
       model: model,
-      game: 'haiku-test',
+      game: "haiku-test",
       match_id: promptInfo.id,
       response_time_ms: result.response_time_ms,
       tokens: result.usage,
@@ -86,7 +88,7 @@ async function testModel(model, promptInfo) {
 
     return {
       model: model,
-      game: 'haiku-test',
+      game: "haiku-test",
       match_id: promptInfo.id,
       response_time_ms: null,
       tokens: null,
@@ -97,20 +99,24 @@ async function testModel(model, promptInfo) {
 }
 
 async function main() {
-  console.log('🧪 Testing Simple Haiku Generation (Multi-Prompt Pattern)');
-  console.log('='.repeat(80));
-  console.log(`Testing ${TEST_PROMPTS.length} prompts × ${MODELS.length} models...`);
-  console.log('Prompts:');
-  TEST_PROMPTS.forEach((p) => console.log(`  - ${p.name}: "${p.prompt[0].content}"`));
-  console.log('\nExecution order: For each prompt, run all models');
-  console.log('(This mirrors the real evaluation pattern)\n');
+  console.log("🧪 Testing Simple Haiku Generation (Multi-Prompt Pattern)");
+  console.log("=".repeat(80));
+  console.log(
+    `Testing ${TEST_PROMPTS.length} prompts × ${MODELS.length} models...`,
+  );
+  console.log("Prompts:");
+  TEST_PROMPTS.forEach((p) =>
+    console.log(`  - ${p.name}: "${p.prompt[0].content}"`),
+  );
+  console.log("\nExecution order: For each prompt, run all models");
+  console.log("(This mirrors the real evaluation pattern)\n");
 
   const timestamp = new Date().toISOString();
   const evaluation = {
     timestamp,
     matches: TEST_PROMPTS.map((p) => ({
       match_id: p.id,
-      game: 'haiku-test',
+      game: "haiku-test",
       prompt: p.prompt,
       name: p.name,
     })),
@@ -119,9 +125,9 @@ async function main() {
 
   // Test each prompt against all models (mirrors real evaluation pattern)
   for (const promptInfo of TEST_PROMPTS) {
-    console.log(`\n${'='.repeat(80)}`);
+    console.log(`\n${"=".repeat(80)}`);
     console.log(`TESTING PROMPT: ${promptInfo.name}`);
-    console.log('='.repeat(80));
+    console.log("=".repeat(80));
 
     for (const model of MODELS) {
       const result = await testModel(model, promptInfo);
@@ -133,9 +139,9 @@ async function main() {
   }
 
   // Display summary
-  console.log(`\n${'='.repeat(80)}`);
-  console.log('SUMMARY');
-  console.log('='.repeat(80));
+  console.log(`\n${"=".repeat(80)}`);
+  console.log("SUMMARY");
+  console.log("=".repeat(80));
 
   const totalTests = TEST_PROMPTS.length * MODELS.length;
   const successful = evaluation.results.filter((r) => !r.error);
@@ -153,12 +159,14 @@ async function main() {
   // Show results grouped by prompt
   if (successful.length > 0) {
     for (const promptInfo of TEST_PROMPTS) {
-      const promptResults = successful.filter((r) => r.match_id === promptInfo.id);
+      const promptResults = successful.filter(
+        (r) => r.match_id === promptInfo.id,
+      );
 
       if (promptResults.length > 0) {
-        console.log(`\n${'─'.repeat(80)}`);
+        console.log(`\n${"─".repeat(80)}`);
         console.log(`Results for: ${promptInfo.name}`);
-        console.log('─'.repeat(80));
+        console.log("─".repeat(80));
 
         // Speed comparison
         console.log(`\nSpeed Ranking:`);
@@ -183,22 +191,22 @@ async function main() {
   }
 
   // Save results
-  const resultsDir = path.join(__dirname, 'results');
+  const resultsDir = path.join(__dirname, "results");
   await fs.mkdir(resultsDir, { recursive: true });
 
-  const filename = `haiku-test-${timestamp.replace(/:/g, '-').replace(/\..+/, '')}.json`;
+  const filename = `haiku-test-${timestamp.replace(/:/g, "-").replace(/\..+/, "")}.json`;
   const filepath = path.join(resultsDir, filename);
   await fs.writeFile(filepath, JSON.stringify(evaluation, null, 2));
 
-  console.log(`\n${'='.repeat(80)}`);
+  console.log(`\n${"=".repeat(80)}`);
   console.log(`✅ Test complete! Results saved to:`);
   console.log(`   ${filepath}`);
   console.log(`\nYou can evaluate these results with:`);
   console.log(`   node evaluate-results.mjs ${filepath}`);
-  console.log('='.repeat(80));
+  console.log("=".repeat(80));
 }
 
 main().catch((err) => {
-  console.error('Fatal error:', err);
+  console.error("Fatal error:", err);
   process.exit(1);
 });
