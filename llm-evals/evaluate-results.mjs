@@ -308,9 +308,10 @@ function displayRankings(data, ratings, game, matchCount) {
     if (result.tokens) {
       stats[modelId].tokens.push(result.tokens);
 
-      // Calculate cost for this result (backward compatibility)
-      const cost =
-        result.cost_usd || calculateCost(data.models[modelId], result.tokens);
+      // Recomputed rather than read from cost_usd: that field was written at
+      // generation time, so a file produced under older pricing would compare
+      // its models against a different table than a file produced today.
+      const cost = calculateCost(data.models[modelId], result.tokens);
       if (cost !== null) {
         stats[modelId].costs.push(cost);
       }
@@ -615,9 +616,7 @@ async function main() {
               const costs = [];
               for (const result of gameResults) {
                 if (result.tokens) {
-                  const cost =
-                    result.cost_usd ||
-                    calculateCost(ranking.model_name, result.tokens);
+                  const cost = calculateCost(ranking.model_name, result.tokens);
                   if (cost !== null) {
                     costs.push(cost);
                   }

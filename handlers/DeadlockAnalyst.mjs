@@ -200,21 +200,17 @@ export async function handler(event, context) {
             : `Match Analysis - ${playerHero}`,
           description: analysis.summary,
           fields: [
-            {
-              name: "Highlights",
-              value: analysis.strengths.map((txt) => `- ${txt}`).join("\n"),
-            },
-            {
-              name: "Focus areas",
-              value: analysis.weaknesses.map((txt) => `- ${txt}`).join("\n"),
-            },
-            {
-              name: "Recommendations",
-              value: analysis.recommendations
-                .map((txt) => `- ${txt}`)
-                .join("\n"),
-            },
-          ],
+            { name: "Highlights", items: analysis.strengths },
+            { name: "Focus areas", items: analysis.weaknesses },
+            { name: "Recommendations", items: analysis.recommendations },
+          ]
+            // Discord rejects an embed field with an empty value, which would
+            // lose the whole analysis over one section the model left empty.
+            .filter(({ items }) => items?.length)
+            .map(({ name, items }) => ({
+              name,
+              value: items.map((txt) => `- ${txt}`).join("\n"),
+            })),
         },
       ],
       allowed_mentions: { parse: [] },
