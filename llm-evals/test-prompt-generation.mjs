@@ -1,17 +1,17 @@
-import OpenDotaAPI from '../lib/OpenDotaAPI.mjs';
-import DeadlockAPI from '../lib/DeadlockAPI.mjs';
-import NoOpCache from './lib/NoOpCache.mjs';
-import DotaConstants from '../lib/DotaConstants.mjs';
-import * as DeadlockConstants from '../lib/DeadlockConstants.mjs';
+import OpenDotaAPI from "../lib/OpenDotaAPI.mjs";
+import DeadlockAPI from "../lib/DeadlockAPI.mjs";
+import NoOpCache from "./lib/NoOpCache.mjs";
+import DotaConstants from "../lib/DotaConstants.mjs";
+import * as DeadlockConstants from "../lib/DeadlockConstants.mjs";
 import {
   generateCompactMatch as generateDeadlockCompactMatch,
   loadItems as loadDeadlockItems,
-} from '../lib/DeadlockMatchProcessor.mjs';
+} from "../lib/DeadlockMatchProcessor.mjs";
 import {
   generateCompactMatch as generateDotaCompactMatch,
   processPopularItems,
-} from '../lib/DotaMatchProcessor.mjs';
-import fs from 'fs/promises';
+} from "../lib/DotaMatchProcessor.mjs";
+import fs from "fs/promises";
 
 // Initialize API clients with NoOpCache for local testing
 const openDotaAPI = new OpenDotaAPI(NoOpCache);
@@ -52,19 +52,19 @@ function parseArgs() {
     const value = args[i + 1];
 
     switch (flag) {
-      case '--account-id':
+      case "--account-id":
         parsed.accountId = value;
         break;
-      case '--dota-match-id':
+      case "--dota-match-id":
         parsed.dotaMatchId = value;
         break;
-      case '--deadlock-match-id':
+      case "--deadlock-match-id":
         parsed.deadlockMatchId = value;
         break;
-      case '--deadlock-player-name':
+      case "--deadlock-player-name":
         parsed.deadlockPlayerName = value;
         break;
-      case '--output':
+      case "--output":
         parsed.output = value;
         break;
       default:
@@ -78,10 +78,10 @@ function parseArgs() {
 
   if (!hasDota && !hasDeadlock) {
     console.error(
-      'Error: Must provide --account-id and match ID for at least one game',
+      "Error: Must provide --account-id and match ID for at least one game",
     );
     console.error(
-      'Usage: node test-prompt-generation.mjs --account-id ID [--dota-match-id ID] [--deadlock-match-id ID [--deadlock-player-name NAME]] [--output FILE]',
+      "Usage: node test-prompt-generation.mjs --account-id ID [--dota-match-id ID] [--deadlock-match-id ID [--deadlock-player-name NAME]] [--output FILE]",
     );
     process.exit(1);
   }
@@ -95,7 +95,9 @@ function estimateTokens(text) {
 }
 
 async function generateDotaPrompt(matchId, accountId) {
-  console.log(`\n🔄 Fetching Dota match ${matchId} for account ${accountId}...`);
+  console.log(
+    `\n🔄 Fetching Dota match ${matchId} for account ${accountId}...`,
+  );
 
   const fullMatch = await openDotaAPI.getMatch(matchId);
 
@@ -122,8 +124,9 @@ async function generateDotaPrompt(matchId, accountId) {
   let popularItems;
   if (fullMatch.game_mode !== 18) {
     try {
-      const heroItemPopularity =
-        await openDotaAPI.getHeroItemPopularity(player.hero_id);
+      const heroItemPopularity = await openDotaAPI.getHeroItemPopularity(
+        player.hero_id,
+      );
       popularItems = processPopularItems(heroItemPopularity);
       console.log(`✓ Loaded popular items for ${playerHero}`);
     } catch (err) {
@@ -136,24 +139,24 @@ async function generateDotaPrompt(matchId, accountId) {
   const compactMatch = generateDotaCompactMatch(fullMatch, Number(accountId));
   console.log(`✓ Generated compact match data`);
 
-  const prompt = [{ role: 'system', content: DOTA_SYSTEM_PROMPT.trim() }];
+  const prompt = [{ role: "system", content: DOTA_SYSTEM_PROMPT.trim() }];
 
   if (matchHeroesMeta) {
     prompt.push({
-      role: 'system',
+      role: "system",
       content: `Meta Heroes for this match (high-MMR ranking, 1=strongest):\n${JSON.stringify(matchHeroesMeta)}`,
     });
   }
 
   if (popularItems) {
     prompt.push({
-      role: 'system',
+      role: "system",
       content: `Popular Items for ${playerHero} by game phase (from last 100 professional matches):\n${JSON.stringify(popularItems)}`,
     });
   }
 
   prompt.push({
-    role: 'user',
+    role: "user",
     content: `Analyze this match for player ${playerName} (ID: ${accountId}) playing ${playerHero}:\n\n${JSON.stringify(compactMatch)}`,
   });
 
@@ -180,12 +183,16 @@ async function generateDeadlockPrompt(matchId, accountId, playerName = null) {
     throw new Error(`Account ${accountId} not found in match ${matchId}`);
   }
 
-  const playerHero = DeadlockConstants.heroes[player.hero_id]?.name || 'Unknown';
+  const playerHero =
+    DeadlockConstants.heroes[player.hero_id]?.name || "Unknown";
   console.log(`✓ Found player playing ${playerHero}`);
 
   // Load items data (required for generateCompactMatch)
   console.log(`🔄 Loading Deadlock items data...`);
-  const itemsData = await loadDeadlockItems({ cache: NoOpCache, skipCache: true });
+  const itemsData = await loadDeadlockItems({
+    cache: NoOpCache,
+    skipCache: true,
+  });
   console.log(`✓ Loaded items data`);
 
   // Use production generateCompactMatch function
@@ -198,23 +205,28 @@ async function generateDeadlockPrompt(matchId, accountId, playerName = null) {
   console.log(`✓ Generated compact match data`);
 
   // Format player identifier like production (DeadlockAnalyst.mjs:1248)
-  const playerIdentifier = playerName ? `player ${playerName}` : 'the player';
+  const playerIdentifier = playerName ? `player ${playerName}` : "the player";
 
   const prompt = [
-    { role: 'system', content: DEADLOCK_SYSTEM_PROMPT.trim() },
+    { role: "system", content: DEADLOCK_SYSTEM_PROMPT.trim() },
     {
-      role: 'user',
+      role: "user",
       content: `Analyze this Deadlock match for ${playerIdentifier} playing ${playerHero}:\n\n${JSON.stringify(compactMatch)}`,
     },
   ];
 
-  return { prompt, compactMatch, playerName: playerName || `Account ${accountId}`, playerHero };
+  return {
+    prompt,
+    compactMatch,
+    playerName: playerName || `Account ${accountId}`,
+    playerHero,
+  };
 }
 
 function displayPrompt(gameName, promptData) {
-  console.log(`\n${'='.repeat(80)}`);
+  console.log(`\n${"=".repeat(80)}`);
   console.log(`${gameName.toUpperCase()} PROMPT`);
-  console.log('='.repeat(80));
+  console.log("=".repeat(80));
 
   let totalTokens = 0;
 
@@ -223,13 +235,15 @@ function displayPrompt(gameName, promptData) {
     totalTokens += tokens;
 
     const preview = message.content.substring(0, 50);
-    console.log(`[Message ${index + 1}] Role: ${message.role}, Estimated tokens: ~${tokens}`);
+    console.log(
+      `[Message ${index + 1}] Role: ${message.role}, Estimated tokens: ~${tokens}`,
+    );
     console.log(`  Preview: "${preview}..."`);
   });
 
-  console.log(`\n${'='.repeat(80)}`);
+  console.log(`\n${"=".repeat(80)}`);
   console.log(`Total estimated tokens: ~${totalTokens}`);
-  console.log('='.repeat(80));
+  console.log("=".repeat(80));
 }
 
 async function main() {
@@ -239,8 +253,8 @@ async function main() {
     prompts: {},
   };
 
-  console.log('🧪 Testing Prompt Generation');
-  console.log('='.repeat(80));
+  console.log("🧪 Testing Prompt Generation");
+  console.log("=".repeat(80));
 
   // Generate Dota prompt
   if (args.dotaMatchId && args.accountId) {
@@ -249,7 +263,7 @@ async function main() {
         args.dotaMatchId,
         args.accountId,
       );
-      displayPrompt('Dota 2', dotaData);
+      displayPrompt("Dota 2", dotaData);
 
       results.prompts.dota = {
         match_id: args.dotaMatchId,
@@ -273,7 +287,7 @@ async function main() {
         args.accountId,
         args.deadlockPlayerName,
       );
-      displayPrompt('Deadlock', deadlockData);
+      displayPrompt("Deadlock", deadlockData);
 
       results.prompts.deadlock = {
         match_id: args.deadlockMatchId,
@@ -299,6 +313,6 @@ async function main() {
 }
 
 main().catch((err) => {
-  console.error('Fatal error:', err);
+  console.error("Fatal error:", err);
   process.exit(1);
 });

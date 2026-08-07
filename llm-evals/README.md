@@ -5,15 +5,18 @@ A two-script system for evaluating LLM performance on Dota 2 and Deadlock match 
 ## Models Evaluated
 
 ### OpenAI (August 2025)
+
 - `gpt-5` - Latest flagship model
 - `gpt-5-mini` - Smaller, faster version
 - `gpt-5-nano` - Most compact version
 
 ### Anthropic (October 2025)
+
 - `claude-sonnet-4-5` - Latest frontier model, best coding performance
 - `claude-haiku-4-5` - Small model with 90% of Sonnet 4.5 performance
 
 ### Google Gemini (2025)
+
 - `gemini-2.5-pro` - Flagship with adaptive thinking
 - `gemini-2.5-flash` - Fast, cost-efficient with thinking
 - `gemini-2.5-flash-lite` - Most efficient
@@ -21,6 +24,7 @@ A two-script system for evaluating LLM performance on Dota 2 and Deadlock match 
 ## Prerequisites
 
 1. **Environment Variables**: Ensure `environment.js` in the parent directory contains API keys:
+
    ```javascript
    {
      openai: { apikey: "sk-..." },
@@ -46,11 +50,13 @@ node generate-eval.mjs \
 ```
 
 **Options:**
+
 - `--dota-match-id` + `--dota-account-id` - Dota 2 match to analyze
 - `--deadlock-match-id` + `--deadlock-account-id` - Deadlock match to analyze
 - At least one game must be specified
 
 **Output:**
+
 - Creates `results/{timestamp}.json` with:
   - Original prompts
   - Model responses (with hidden IDs)
@@ -59,6 +65,7 @@ node generate-eval.mjs \
   - Any errors
 
 **What it does:**
+
 1. Fetches match data from OpenDota/Deadlock APIs
 2. Generates prompts using existing analyst logic
 3. Calls each model sequentially
@@ -74,6 +81,7 @@ node evaluate-results.mjs results/2025-10-15T12-34-56.json
 ```
 
 **What it does:**
+
 1. Loads results file
 2. Presents pairwise comparisons side-by-side
 3. Hides model identities during evaluation
@@ -84,6 +92,7 @@ node evaluate-results.mjs results/2025-10-15T12-34-56.json
 8. Saves rankings back to results file
 
 **Example comparison screen:**
+
 ```
 ================================================================================
 MATCH: DOTA 2 - Match 123456
@@ -99,6 +108,7 @@ Which is better? (1/2/0=equal/s=skip/q=quit): _
 ```
 
 **Final rankings table:**
+
 ```
 ================================================================================================
 FINAL RANKINGS - DOTA 2 (1 match)
@@ -178,20 +188,24 @@ llm-evals/
 ## Key Features
 
 ### No Dependencies
+
 - Uses only standard Node.js `fetch()` - no external HTTP libraries
 - No new npm packages required
 
 ### Blind Evaluation
+
 - Model identities hidden during comparison
 - Randomized display order to avoid position bias
 - Prevents evaluator bias
 
 ### Elo Rating System
+
 - More sophisticated than simple win/loss counts
 - Accounts for relative strength of opponents
 - Converges to accurate rankings with fewer comparisons
 
 ### Comprehensive Metrics
+
 - **Quality**: User-driven Elo rating
 - **Speed**: Response time in milliseconds
 - **Cost**: Calculated from token usage and model pricing (per million tokens)
@@ -199,6 +213,7 @@ llm-evals/
 - **Efficiency**: Token usage (input/output/cached)
 
 ### Reuses Existing Logic
+
 - Imports data fetching from existing handlers
 - Uses same prompts as production
 - Results directly comparable to live performance
@@ -208,21 +223,25 @@ llm-evals/
 All three providers work with standard `fetch()`:
 
 ### OpenAI
+
 - Endpoint: `https://api.openai.com/v1/chat/completions`
 - Auth: `Authorization: Bearer {key}`
 - JSON response format supported
 
 ### Anthropic
+
 - Endpoint: `https://api.anthropic.com/v1/messages`
 - Auth: `x-api-key: {key}`
 - System prompt separate from messages
 
 ### Google Gemini
+
 - Endpoint: `https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent`
 - Auth: `x-goog-api-key: {key}`
 - Different message format (auto-converted)
 
 All APIs support:
+
 - Retry on 429/5xx errors
 - Token usage reporting
 - JSON output format
@@ -230,18 +249,21 @@ All APIs support:
 ## Evaluation Methodology
 
 ### Comparison Strategy
+
 - All pairwise combinations of models
 - Randomized order to prevent pattern bias
 - User can skip ambiguous comparisons
 - User can mark outputs as equal quality
 
 ### Elo Rating Calculation
+
 - Initial rating: 1500 for all models
 - K-factor: 32 (high sensitivity)
 - Expected score: `1 / (1 + 10^((RatingB - RatingA) / 400))`
 - Rating update: `Rating += K * (Actual - Expected)`
 
 ### Quality Metrics
+
 - Summary accuracy and insight depth
 - Strength identification (relevant, actionable)
 - Weakness analysis (fair, constructive)
@@ -258,6 +280,7 @@ node test-simple-haiku.mjs
 ```
 
 **What it does:**
+
 - Tests all 8 models with a simple prompt: "Write me a haiku about Dota 2"
 - Validates API keys and connectivity for all 3 providers
 - Much faster than full match analysis
@@ -266,6 +289,7 @@ node test-simple-haiku.mjs
 - Can be evaluated with `evaluate-results.mjs`
 
 **Use this when:**
+
 - First-time setup
 - Verifying API keys work
 - Testing after changing LLMClient code
@@ -283,12 +307,14 @@ node test-prompt-generation.mjs \
 ```
 
 **What it does:**
+
 - Fetches match data from APIs (supports both Dota and Deadlock)
 - Generates prompts without calling LLMs
 - Shows formatted prompt previews and estimated token counts
 - Optionally saves full prompts and compact match data to JSON file
 
 **Use this when:**
+
 - Verifying match data is accessible
 - Checking prompt structure and content
 - Estimating token usage before running full evaluation
@@ -311,27 +337,32 @@ node test-prompt-generation.mjs \
 ## Troubleshooting
 
 ### API Key Issues
+
 - Verify keys in `../environment.js`
 - Check key has sufficient quota/credits
 - Ensure correct environment variable names
 
 ### Rate Limits
+
 - Script includes 1s delay between API calls
 - Increase delay in `generate-eval.mjs` if needed
 - Run during off-peak hours
 
 ### Match Not Found
+
 - Verify match ID is correct
 - For Dota: Ensure match is parsed by OpenDota
 - For Deadlock: Ensure match data is available
 - Run `test-prompt-generation.mjs` to isolate the issue
 
 ### Parse Errors
+
 - Check model outputs in results JSON
 - Some models may return malformed JSON
 - Error details saved in results file
 
 ### Testing Issues
+
 - **API fails** → Run `test-simple-haiku.mjs` to verify connectivity
 - **Prompt generation fails** → Run `test-prompt-generation.mjs` to see detailed error
 - **All models fail** → Check API keys in `environment.js`
