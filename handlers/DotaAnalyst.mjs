@@ -4,6 +4,11 @@ import Discord from "../lib/Discord.mjs";
 import cache from "../lib/cache.mjs";
 import OpenDotaAPI from "../lib/OpenDotaAPI.mjs";
 import LLMClient from "../lib/LLMClient.mjs";
+import {
+  ANALYSIS_SCHEMA,
+  ANALYSIS_MODELS,
+  analysisFields,
+} from "../lib/analysis.mjs";
 import secrets from "../lib/secrets.mjs";
 import DotaConstants from "../lib/DotaConstants.mjs";
 import {
@@ -198,22 +203,7 @@ export async function handler(event, context) {
         {
           title: `Match Analysis - ${playerName} - ${playerHero}`,
           description: analysis.summary,
-          fields: [
-            {
-              name: "Highlights",
-              value: analysis.strengths.map((txt) => `- ${txt}`).join("\n"),
-            },
-            {
-              name: "Focus areas",
-              value: analysis.weaknesses.map((txt) => `- ${txt}`).join("\n"),
-            },
-            {
-              name: "Recommendations",
-              value: analysis.recommendations
-                .map((txt) => `- ${txt}`)
-                .join("\n"),
-            },
-          ],
+          fields: analysisFields(analysis),
         },
       ],
       allowed_mentions: { parse: [] },
@@ -282,12 +272,17 @@ async function analyzeMatch(match, playerId, playerName, fullMatch) {
 
   console.log("Analyzing Match", { prompt });
 
-  const response = await llm.call(prompt, "gemini-2.5-flash");
+  const response = await llm.callWithFallback(
+    prompt,
+    ANALYSIS_MODELS,
+    ANALYSIS_SCHEMA,
+  );
 
   if (response.usage) {
     const usage = response.usage;
     const cachedTokens = usage.cached_tokens;
     console.log("Token usage:", {
+      model: response.model,
       total_tokens: usage.total_tokens,
       prompt_tokens: usage.prompt_tokens,
       completion_tokens: usage.completion_tokens,

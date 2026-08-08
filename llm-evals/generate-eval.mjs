@@ -1,4 +1,6 @@
 import LLMClient from "../lib/LLMClient.mjs";
+import { ANALYSIS_SCHEMA } from "../lib/analysis.mjs";
+import { calculateCost, isPriced } from "./lib/pricing.mjs";
 import OpenDotaAPI from "../lib/OpenDotaAPI.mjs";
 import DeadlockAPI from "../lib/DeadlockAPI.mjs";
 import NoOpCache from "./lib/NoOpCache.mjs";
@@ -42,39 +44,9 @@ const MODELS = [
   "claude-sonnet-4-5",
   "gemini-2.5-pro",
   "gemini-2.5-flash",
+  "gemini-3.5-flash",
+  "gemini-3.6-flash",
 ];
-
-// Pricing per million tokens (as of October 2025)
-// Source: Provider pricing pages
-const PRICING = {
-  "gpt-5": { input: 2.5, output: 10.0 },
-  "gpt-5-mini": { input: 0.4, output: 1.6 },
-  "gpt-5-nano": { input: 0.1, output: 0.4 },
-  "claude-opus-4-1": { input: 15.0, output: 75.0 },
-  "claude-sonnet-4-5": { input: 3.0, output: 15.0 },
-  "claude-haiku-4-5": { input: 0.8, output: 4.0 },
-  "gemini-2.5-pro": { input: 1.25, output: 5.0 },
-  "gemini-2.5-flash": { input: 0.075, output: 0.3 },
-  "gemini-2.5-flash-lite": { input: 0.0375, output: 0.15 },
-};
-
-/**
- * Calculate cost for a model call
- * @param {string} model - Model name
- * @param {object} tokens - Token usage object
- * @returns {number} - Cost in USD
- */
-function calculateCost(model, tokens) {
-  const pricing = PRICING[model];
-  if (!pricing) {
-    return 0;
-  }
-
-  const inputCost = (tokens.prompt_tokens / 1_000_000) * pricing.input;
-  const outputCost = (tokens.completion_tokens / 1_000_000) * pricing.output;
-
-  return inputCost + outputCost;
-}
 
 // System prompts and helper functions are now in lib/DotaMatchProcessor.mjs and lib/DeadlockMatchProcessor.mjs
 
@@ -151,7 +123,7 @@ function parseArgs() {
 
   // Validate that all specified models are known (have pricing)
   for (const model of parsed.models) {
-    if (!PRICING[model]) {
+    if (!isPriced(model)) {
       console.error(
         `Warning: Model '${model}' does not have pricing information`,
       );
@@ -350,7 +322,7 @@ async function runEvaluation(args) {
       console.log(`\nTesting ${model}...`);
 
       try {
-        const result = await llm.call(match.prompt, model);
+        const result = await llm.call(match.prompt, model, ANALYSIS_SCHEMA);
 
         const cost = calculateCost(model, result.usage);
 
@@ -369,7 +341,9 @@ async function runEvaluation(args) {
         console.log(
           `  Tokens: ${result.usage.prompt_tokens} in / ${result.usage.completion_tokens} out`,
         );
-        console.log(`  Cost: $${cost.toFixed(4)}`);
+        console.log(
+          `  Cost: ${cost === null ? "unpriced" : `$${cost.toFixed(4)}`}`,
+        );
       } catch (err) {
         console.error(`  ✗ Failed: ${err.message}`);
         evaluation.results.push({

@@ -1,33 +1,9 @@
 import fs from "fs/promises";
 import readline from "readline";
+import { calculateCost } from "./lib/pricing.mjs";
 
 const ELO_K_FACTOR = 32;
 const INITIAL_ELO = 1500;
-
-// Pricing per million tokens (as of October 2025)
-const PRICING = {
-  "gpt-5": { input: 2.5, output: 10.0 },
-  "gpt-5-mini": { input: 0.4, output: 1.6 },
-  "gpt-5-nano": { input: 0.1, output: 0.4 },
-  "claude-opus-4-1": { input: 15.0, output: 75.0 },
-  "claude-sonnet-4-5": { input: 3.0, output: 15.0 },
-  "claude-haiku-4-5": { input: 0.8, output: 4.0 },
-  "gemini-2.5-pro": { input: 1.25, output: 5.0 },
-  "gemini-2.5-flash": { input: 0.075, output: 0.3 },
-  "gemini-2.5-flash-lite": { input: 0.0375, output: 0.15 },
-};
-
-function calculateCost(model, tokens) {
-  const pricing = PRICING[model];
-  if (!pricing || !tokens) {
-    return null;
-  }
-
-  const inputCost = (tokens.prompt_tokens / 1_000_000) * pricing.input;
-  const outputCost = (tokens.completion_tokens / 1_000_000) * pricing.output;
-
-  return inputCost + outputCost;
-}
 
 function parseArgs() {
   const args = process.argv.slice(2);
@@ -301,9 +277,10 @@ function displayRankings(data, ratings, game, matchCount) {
     if (result.tokens) {
       stats[modelId].tokens.push(result.tokens);
 
-      // Calculate cost for this result (backward compatibility)
-      const cost =
-        result.cost_usd || calculateCost(data.models[modelId], result.tokens);
+      // Recomputed rather than read from cost_usd: that field was written at
+      // generation time, so a file produced under older pricing would compare
+      // its models against a different table than a file produced today.
+      const cost = calculateCost(data.models[modelId], result.tokens);
       if (cost !== null) {
         stats[modelId].costs.push(cost);
       }
@@ -608,9 +585,7 @@ async function main() {
               const costs = [];
               for (const result of gameResults) {
                 if (result.tokens) {
-                  const cost =
-                    result.cost_usd ||
-                    calculateCost(ranking.model_name, result.tokens);
+                  const cost = calculateCost(ranking.model_name, result.tokens);
                   if (cost !== null) {
                     costs.push(cost);
                   }

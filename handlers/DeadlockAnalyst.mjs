@@ -5,6 +5,11 @@ import { DynamoDBDocumentClient, GetCommand } from "@aws-sdk/lib-dynamodb";
 import Discord from "../lib/Discord.mjs";
 import cache from "../lib/cache.mjs";
 import LLMClient from "../lib/LLMClient.mjs";
+import {
+  ANALYSIS_SCHEMA,
+  ANALYSIS_MODELS,
+  analysisFields,
+} from "../lib/analysis.mjs";
 import secrets from "../lib/secrets.mjs";
 import * as DeadlockConstants from "../lib/DeadlockConstants.mjs";
 import DeadlockAPI from "../lib/DeadlockAPI.mjs";
@@ -198,22 +203,7 @@ export async function handler(event, context) {
             ? `Match Analysis - ${playerName} - ${playerHero}`
             : `Match Analysis - ${playerHero}`,
           description: analysis.summary,
-          fields: [
-            {
-              name: "Highlights",
-              value: analysis.strengths.map((txt) => `- ${txt}`).join("\n"),
-            },
-            {
-              name: "Focus areas",
-              value: analysis.weaknesses.map((txt) => `- ${txt}`).join("\n"),
-            },
-            {
-              name: "Recommendations",
-              value: analysis.recommendations
-                .map((txt) => `- ${txt}`)
-                .join("\n"),
-            },
-          ],
+          fields: analysisFields(analysis),
         },
       ],
       allowed_mentions: { parse: [] },
@@ -270,12 +260,17 @@ async function analyzeMatch(compactMatch, playerName) {
 
   console.log("Compact Match Data:", JSON.stringify(compactMatch, null, 2));
 
-  const response = await llm.call(prompt, "gemini-2.5-flash");
+  const response = await llm.callWithFallback(
+    prompt,
+    ANALYSIS_MODELS,
+    ANALYSIS_SCHEMA,
+  );
 
   if (response.usage) {
     const usage = response.usage;
     const cachedTokens = usage.cached_tokens;
     console.log("Token usage:", {
+      model: response.model,
       total_tokens: usage.total_tokens,
       prompt_tokens: usage.prompt_tokens,
       completion_tokens: usage.completion_tokens,
