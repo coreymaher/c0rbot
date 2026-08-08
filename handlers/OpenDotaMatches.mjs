@@ -198,14 +198,14 @@ function createDiscordMessageForMatch(steamID, user, matchID, match, config) {
 
   const thumbnail_url = `http://cdn.dota2.com/apps/dota2/images/dota_react/heroes/${hero.image}.png`;
 
-  let description = `${user.personaname} ${result} a `;
-  if (skill) {
-    description += `${skill} skill `;
-  }
-  if (lobby) {
-    description += `${lobby} `;
-  }
-  description += `${gameMode} match as ${hero.name}`;
+  const matchType = [skill && `${skill} skill`, lobby, gameMode, "match"]
+    .filter(Boolean)
+    .join(" ");
+  // Whichever qualifier survives leads the phrase, and "An Unranked match" and
+  // "an All Pick match" both come up. No mode starts with a sounded "u", so the
+  // vowel is enough to go on.
+  const article = /^[aeiou]/i.test(matchType) ? "an" : "a";
+  const description = `${user.personaname} ${result} ${article} ${matchType} as ${hero.name}`;
   const embed = {
     author: {
       name: user.personaname,
