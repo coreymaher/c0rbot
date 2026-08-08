@@ -81,15 +81,6 @@ function formatDuration(duration) {
   return parts.join(" ");
 }
 
-function formatRank(average) {
-  if (average == null) return null;
-
-  const rank = Math.floor(average / 10);
-  const subrank = average % 10;
-
-  return constants.ranks[rank] ? `${constants.ranks[rank]} ${subrank}` : null;
-}
-
 async function handleMatch(match, user) {
   console.log(`Found match: ${match.match_id}`);
 
@@ -112,8 +103,15 @@ async function handleMatch(match, user) {
   const result = match.match_result === match.player_team ? "won" : "lost";
   const hero = constants.heroes[match.hero_id];
 
-  const gameMode = metadata?.match_info?.game_mode;
-  const matchType = gameMode === 4 ? "street brawl" : "match";
+  // Reads like the Dota embed: "<mode> <game mode> match", skipping either half
+  // when there is no word for it.
+  const matchType = [
+    constants.matchModes[metadata?.match_info?.match_mode],
+    constants.gameModes[metadata?.match_info?.game_mode],
+    "match",
+  ]
+    .filter(Boolean)
+    .join(" ");
   const description = `${user.name} ${result} a Deadlock ${matchType} as ${hero.name}`;
   const fields = [];
 
@@ -141,18 +139,9 @@ async function handleMatch(match, user) {
     inline: true,
   });
 
-  // Prefer rank from metadata, fall back to match history
-  let rank = null;
-  if (metadata?.match_info) {
-    const avgBadge = Math.round(
-      (metadata.match_info.average_badge_team0 +
-        metadata.match_info.average_badge_team1) /
-        2,
-    );
-    rank = formatRank(avgBadge);
-  } else {
-    rank = formatRank(match.average_match_badge);
-  }
+  const rank = constants.formatBadge(
+    await deadlockAPI.getMatchAverageBadge(metadata?.match_info),
+  );
 
   if (rank) {
     fields.push({
