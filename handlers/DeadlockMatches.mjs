@@ -103,16 +103,19 @@ async function handleMatch(match, user) {
   const result = match.match_result === match.player_team ? "won" : "lost";
   const hero = constants.heroes[match.hero_id];
 
-  // Reads like the Dota embed: "<mode> <game mode> match", skipping either half
-  // when there is no word for it.
+  // Reads like the Dota embed: "<mode> Deadlock <game mode> match", dropping
+  // either qualifier when there is no word for it.
   const matchType = [
     constants.matchModes[metadata?.match_info?.match_mode],
+    "Deadlock",
     constants.gameModes[metadata?.match_info?.game_mode],
     "match",
   ]
     .filter(Boolean)
     .join(" ");
-  const description = `${user.name} ${result} a Deadlock ${matchType} as ${hero.name}`;
+  // "unranked" is the only qualifier that leads, and it takes "an".
+  const article = matchType.startsWith("unranked") ? "an" : "a";
+  const description = `${user.name} ${result} ${article} ${matchType} as ${hero.name}`;
   const fields = [];
 
   fields.push({
