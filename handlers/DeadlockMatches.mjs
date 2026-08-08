@@ -11,7 +11,7 @@ const client = new DynamoDBClient({});
 const docClient = DynamoDBDocumentClient.from(client);
 
 import Discord from "../lib/Discord.mjs";
-import { simpleGet } from "../lib/utils.mjs";
+import { simpleGet, withArticle } from "../lib/utils.mjs";
 import * as constants from "../lib/DeadlockConstants.mjs";
 import DeadlockAPI from "../lib/DeadlockAPI.mjs";
 import cache from "../lib/cache.mjs";
@@ -103,8 +103,6 @@ async function handleMatch(match, user) {
   const result = match.match_result === match.player_team ? "won" : "lost";
   const hero = constants.heroes[match.hero_id];
 
-  // Reads like the Dota embed: "<mode> Deadlock <game mode> match", dropping
-  // either qualifier when there is no word for it.
   const matchType = [
     constants.matchModes[metadata?.match_info?.match_mode],
     "Deadlock",
@@ -113,9 +111,7 @@ async function handleMatch(match, user) {
   ]
     .filter(Boolean)
     .join(" ");
-  // "unranked" is the only qualifier that leads, and it takes "an".
-  const article = matchType.startsWith("unranked") ? "an" : "a";
-  const description = `${user.name} ${result} ${article} ${matchType} as ${hero.name}`;
+  const description = `${user.name} ${result} ${withArticle(matchType)} as ${hero.name}`;
   const fields = [];
 
   fields.push({

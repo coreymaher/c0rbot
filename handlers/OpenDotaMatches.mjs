@@ -10,6 +10,7 @@ import DotaConstants from "../lib/DotaConstants.mjs";
 import cache from "../lib/cache.mjs";
 import secrets from "../lib/secrets.mjs";
 import tables from "../lib/tables.mjs";
+import { withArticle } from "../lib/utils.mjs";
 
 const client = new DynamoDBClient({});
 const docClient = DynamoDBDocumentClient.from(client);
@@ -201,11 +202,7 @@ function createDiscordMessageForMatch(steamID, user, matchID, match, config) {
   const matchType = [skill && `${skill} skill`, lobby, gameMode, "match"]
     .filter(Boolean)
     .join(" ");
-  // Whichever qualifier survives leads the phrase, and "An Unranked match" and
-  // "an All Pick match" both come up. No mode starts with a sounded "u", so the
-  // vowel is enough to go on.
-  const article = /^[aeiou]/i.test(matchType) ? "an" : "a";
-  const description = `${user.personaname} ${result} ${article} ${matchType} as ${hero.name}`;
+  const description = `${user.personaname} ${result} ${withArticle(matchType)} as ${hero.name}`;
   const embed = {
     author: {
       name: user.personaname,
