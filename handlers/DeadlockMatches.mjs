@@ -103,15 +103,13 @@ async function handleMatch(match, user) {
   const result = match.match_result === match.player_team ? "won" : "lost";
   const hero = constants.heroes[match.hero_id];
 
-  const matchType = [
+  const played = withArticle(
     constants.matchModes[metadata?.match_info?.match_mode],
     "Deadlock",
     constants.gameModes[metadata?.match_info?.game_mode],
     "match",
-  ]
-    .filter(Boolean)
-    .join(" ");
-  const description = `${user.name} ${result} ${withArticle(matchType)} as ${hero.name}`;
+  );
+  const description = `${user.name} ${result} ${played} as ${hero.name}`;
   const fields = [];
 
   fields.push({

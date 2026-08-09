@@ -199,10 +199,13 @@ function createDiscordMessageForMatch(steamID, user, matchID, match, config) {
 
   const thumbnail_url = `http://cdn.dota2.com/apps/dota2/images/dota_react/heroes/${hero.image}.png`;
 
-  const matchType = [skill && `${skill} skill`, lobby, gameMode, "match"]
-    .filter(Boolean)
-    .join(" ");
-  const description = `${user.personaname} ${result} ${withArticle(matchType)} as ${hero.name}`;
+  const played = withArticle(
+    skill && `${skill} skill`,
+    lobby,
+    gameMode,
+    "match",
+  );
+  const description = `${user.personaname} ${result} ${played} as ${hero.name}`;
   const embed = {
     author: {
       name: user.personaname,
