@@ -289,15 +289,14 @@ function createDiscordMessageForMatch(steamID, user, matchID, match, config) {
 }
 
 // Resolves each user's newest announced match, which is what their watermark may
-// advance to. A user whose first match failed to send is absent.
+// advance to, and is absent when their first match failed to send. Their matches
+// are already oldest first, so a failure stops that user where Discord did.
 async function sendDiscordMessages(users, matches, config) {
   const queue = [];
 
   Object.keys(users).forEach((steamID) => {
     const user = users[steamID];
 
-    // Already oldest first, so stopping at a failure leaves the watermark on the
-    // last match that reached Discord.
     user.matches.forEach((matchID) => {
       queue.push({
         steamID,

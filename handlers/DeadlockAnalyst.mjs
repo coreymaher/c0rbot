@@ -173,8 +173,7 @@ export async function handler(event, context) {
 
     const popularItemsTimer = createTimer("popular items loading");
     const avgBadge = await deadlockAPI.getMatchAverageBadge(matchData);
-    // Zero is the API's "every rank", which is the right pool when this match
-    // has no rank to compare against.
+    // Zero is the API's "every rank", the right pool for a match with no rank.
     const popularItemsData = await deadlockAPI.getPopularItems(
       player.hero_id,
       avgBadge ?? 0,

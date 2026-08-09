@@ -228,9 +228,8 @@ export async function handler() {
       continue;
     }
 
-    // Oldest first, so the watermark only ever steps forward over matches that
-    // were announced. Stopping at the first failure leaves the rest to the next
-    // run rather than skipping past them or re-sending what already landed.
+    // Oldest first, so stopping at the first failure leaves the watermark on the
+    // last match that was announced and the rest to the next run.
     const newMatches = data.slice(0, seenIndex).reverse();
     for (const match of newMatches) {
       const { error } = await handleMatch(match, user);
