@@ -201,6 +201,8 @@ async function generateDeadlockPrompt(matchId, accountId, playerName = null) {
     matchData,
     Number(accountId),
     itemsData,
+    null,
+    await deadlockAPI.getMatchAverageBadge(matchData),
   );
   console.log(`✓ Generated compact match data`);
 

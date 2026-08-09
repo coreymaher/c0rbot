@@ -10,6 +10,7 @@ import DotaConstants from "../lib/DotaConstants.mjs";
 import cache from "../lib/cache.mjs";
 import secrets from "../lib/secrets.mjs";
 import tables from "../lib/tables.mjs";
+import { withArticle } from "../lib/utils.mjs";
 
 const client = new DynamoDBClient({});
 const docClient = DynamoDBDocumentClient.from(client);
@@ -198,14 +199,13 @@ function createDiscordMessageForMatch(steamID, user, matchID, match, config) {
 
   const thumbnail_url = `http://cdn.dota2.com/apps/dota2/images/dota_react/heroes/${hero.image}.png`;
 
-  let description = `${user.personaname} ${result} a `;
-  if (skill) {
-    description += `${skill} skill `;
-  }
-  if (lobby) {
-    description += `${lobby} `;
-  }
-  description += `${gameMode} match as ${hero.name}`;
+  const played = withArticle(
+    skill && `${skill} skill`,
+    lobby,
+    gameMode,
+    "match",
+  );
+  const description = `${user.personaname} ${result} ${played} as ${hero.name}`;
   const embed = {
     author: {
       name: user.personaname,
@@ -288,38 +288,65 @@ function createDiscordMessageForMatch(steamID, user, matchID, match, config) {
   return { embed, components };
 }
 
+// Resolves each user's newest announced match, which is what their watermark may
+// advance to, and is absent when their first match failed to send. Their matches
+// are already oldest first, so a failure stops that user where Discord did.
 async function sendDiscordMessages(users, matches, config) {
-  const messages = [];
+  const queue = [];
 
   Object.keys(users).forEach((steamID) => {
     const user = users[steamID];
 
     user.matches.forEach((matchID) => {
-      const message = createDiscordMessageForMatch(
+      queue.push({
         steamID,
-        user,
         matchID,
-        matches[matchID],
-        config,
-      );
-
-      if (message) {
-        messages.push(message);
-      }
+        message: createDiscordMessageForMatch(
+          steamID,
+          user,
+          matchID,
+          matches[matchID],
+          config,
+        ),
+      });
     });
   });
+
+  const announced = {};
+  const stalled = new Set();
 
   // Sequential on purpose. Promise.all here would post the embeds in whatever order
   // Discord answers, and would drop the spacing that keeps a burst of matches under
   // the rate limit.
-  for (const { embed, components } of messages) {
-    await discord.sendEmbed(embed, "results", components);
+  for (const { steamID, matchID, message } of queue) {
+    if (stalled.has(steamID)) {
+      continue;
+    }
+
+    if (message) {
+      const { error } = await discord.sendEmbed(
+        message.embed,
+        "results",
+        message.components,
+      );
+
+      if (error) {
+        stalled.add(steamID);
+        continue;
+      }
+    }
+
+    // A match with no embed to build still counts as handled -- retrying it would
+    // come up empty every poll and pin the watermark forever.
+    announced[steamID] = matchID;
   }
+
+  return announced;
 }
 
-async function updateDB(users) {
+async function updateDB(users, announced) {
   await Promise.all(
-    Object.keys(users).map(async (steamID) => {
+    Object.keys(announced).map(async (steamID) => {
       const user = users[steamID];
 
       const params = {
@@ -330,7 +357,7 @@ async function updateDB(users) {
         UpdateExpression:
           "SET last_matchID = :last_matchID, updated_at = :updated_at, dotaname = :dotaname",
         ExpressionAttributeValues: {
-          ":last_matchID": Math.max(...user.matches),
+          ":last_matchID": announced[steamID],
           ":updated_at": Date.now(),
           ":dotaname": user.personaname,
         },
@@ -354,8 +381,8 @@ export async function handler() {
   const { users, matches } = await collectNewMatches(dbUsers);
   await loadPlayers(users);
   await loadMatches(users, matches);
-  await sendDiscordMessages(users, matches, config);
-  await updateDB(users);
+  const announced = await sendDiscordMessages(users, matches, config);
+  await updateDB(users, announced);
 
   return { message: "Done" };
 }

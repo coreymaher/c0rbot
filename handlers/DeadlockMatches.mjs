@@ -11,7 +11,7 @@ const client = new DynamoDBClient({});
 const docClient = DynamoDBDocumentClient.from(client);
 
 import Discord from "../lib/Discord.mjs";
-import { simpleGet } from "../lib/utils.mjs";
+import { simpleGet, withArticle } from "../lib/utils.mjs";
 import * as constants from "../lib/DeadlockConstants.mjs";
 import DeadlockAPI from "../lib/DeadlockAPI.mjs";
 import cache from "../lib/cache.mjs";
@@ -81,15 +81,6 @@ function formatDuration(duration) {
   return parts.join(" ");
 }
 
-function formatRank(average) {
-  if (average == null) return null;
-
-  const rank = Math.floor(average / 10);
-  const subrank = average % 10;
-
-  return constants.ranks[rank] ? `${constants.ranks[rank]} ${subrank}` : null;
-}
-
 async function handleMatch(match, user) {
   console.log(`Found match: ${match.match_id}`);
 
@@ -112,9 +103,13 @@ async function handleMatch(match, user) {
   const result = match.match_result === match.player_team ? "won" : "lost";
   const hero = constants.heroes[match.hero_id];
 
-  const gameMode = metadata?.match_info?.game_mode;
-  const matchType = gameMode === 4 ? "street brawl" : "match";
-  const description = `${user.name} ${result} a Deadlock ${matchType} as ${hero.name}`;
+  const played = withArticle(
+    constants.matchModes[metadata?.match_info?.match_mode],
+    "Deadlock",
+    constants.gameModes[metadata?.match_info?.game_mode],
+    "match",
+  );
+  const description = `${user.name} ${result} ${played} as ${hero.name}`;
   const fields = [];
 
   fields.push({
@@ -141,18 +136,9 @@ async function handleMatch(match, user) {
     inline: true,
   });
 
-  // Prefer rank from metadata, fall back to match history
-  let rank = null;
-  if (metadata?.match_info) {
-    const avgBadge = Math.round(
-      (metadata.match_info.average_badge_team0 +
-        metadata.match_info.average_badge_team1) /
-        2,
-    );
-    rank = formatRank(avgBadge);
-  } else {
-    rank = formatRank(match.average_match_badge);
-  }
+  const rank = constants.formatBadge(
+    await deadlockAPI.getMatchAverageBadge(metadata?.match_info),
+  );
 
   if (rank) {
     fields.push({
@@ -242,16 +228,14 @@ export async function handler() {
       continue;
     }
 
+    // Oldest first, so stopping at the first failure leaves the watermark on the
+    // last match that was announced and the rest to the next run.
     const newMatches = data.slice(0, seenIndex).reverse();
-    const results = [];
     for (const match of newMatches) {
-      const result = await handleMatch(match, user);
-      results.push(result);
-    }
-    const successful = results.some(({ error }) => !error);
+      const { error } = await handleMatch(match, user);
+      if (error) break;
 
-    if (successful) {
-      await updateDB(user.player_id, data[0].match_id);
+      await updateDB(user.player_id, match.match_id);
     }
   }
 

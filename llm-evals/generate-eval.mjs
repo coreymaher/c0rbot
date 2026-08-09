@@ -243,6 +243,8 @@ async function generateDeadlockPrompt(matchId, accountId, playerName) {
     matchData,
     Number(accountId),
     itemsData,
+    null,
+    await deadlockAPI.getMatchAverageBadge(matchData),
   );
 
   if (!compactMatch) {
