@@ -230,16 +230,15 @@ export async function handler() {
       continue;
     }
 
+    // Oldest first, so the watermark only ever steps forward over matches that
+    // were announced. Stopping at the first failure leaves the rest to the next
+    // run rather than skipping past them or re-sending what already landed.
     const newMatches = data.slice(0, seenIndex).reverse();
-    const results = [];
     for (const match of newMatches) {
-      const result = await handleMatch(match, user);
-      results.push(result);
-    }
-    const successful = results.some(({ error }) => !error);
+      const { error } = await handleMatch(match, user);
+      if (error) break;
 
-    if (successful) {
-      await updateDB(user.player_id, data[0].match_id);
+      await updateDB(user.player_id, match.match_id);
     }
   }
 
