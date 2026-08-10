@@ -350,9 +350,8 @@ async function scheduleRetryAnalysis(eventPayload, context) {
     console.log(
       `Created EventBridge schedule: ${ruleName} scheduled for ${scheduleTime.toISOString()}`,
     );
-  } catch (rawErr) {
-    const error = /** @type {Error} */ (rawErr);
-    console.error(`Failed to schedule retry analysis: ${error.message}`);
+  } catch (error) {
+    console.error(`Failed to schedule retry analysis: ${error}`);
     throw error;
   }
 }
@@ -373,9 +372,8 @@ async function cleanupEventBridgeRule(match_id, player_id, interaction_token) {
     );
 
     console.log(`Cleaned up EventBridge schedule: ${ruleName}`);
-  } catch (rawErr) {
+  } catch (error) {
     // Don't throw error if schedule doesn't exist
-    const error = /** @type {Error} */ (rawErr);
-    console.log(`Could not cleanup schedule ${ruleName}: ${error.message}`);
+    console.log(`Could not cleanup schedule ${ruleName}: ${error}`);
   }
 }

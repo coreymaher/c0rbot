@@ -176,11 +176,9 @@ async function processGame(game) {
     let data;
     try {
       data = JSON.parse(raw_data);
-    } catch (rawErr) {
-      const parseError = /** @type {Error} */ (rawErr);
+    } catch (parseError) {
       console.error(
-        `Failed to parse JSON response for ${game.name}:`,
-        parseError.message,
+        `Failed to parse JSON response for ${game.name}: ${parseError}`,
       );
       console.error("Response preview:", raw_data.substring(0, 200));
       return;
@@ -255,9 +253,8 @@ async function processGame(game) {
     if (hasNewEvents) {
       await updateFeedData(game.key, updatedTracking);
     }
-  } catch (rawErr) {
-    const error = /** @type {Error} */ (rawErr);
-    console.error(`Error processing ${game.name}:`, error.message);
+  } catch (error) {
+    console.error(`Error processing ${game.name}: ${error}`);
   }
 }
 
