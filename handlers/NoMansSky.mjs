@@ -1,3 +1,5 @@
+// @ts-check
+
 "use strict";
 
 import Discord from "../lib/Discord.mjs";
@@ -15,6 +17,7 @@ const FEED_URL = "https://www.nomanssky.com/feed/";
 // the rest, and has been Hello Games' convention across every release since 2016.
 const VERSIONED = /\d+\.\d+/;
 
+/** @type {Record<string, string>} */
 const NAMED_ENTITIES = {
   amp: "&",
   lt: "<",
@@ -23,6 +26,7 @@ const NAMED_ENTITIES = {
   apos: "'",
 };
 
+/** @param {string} text */
 function decodeEntities(text) {
   return text
     .replace(/&#x([0-9a-f]+);/gi, (_, hex) =>
@@ -36,6 +40,10 @@ const CDATA = /^<!\[CDATA\[([\s\S]*)\]\]>$/;
 
 // Scoped to one <item>: <channel> opens with its own <title> and <link>, which an
 // unscoped match would take instead.
+/**
+ * @param {string} item
+ * @param {string} name
+ */
 function tagText(item, name) {
   const match = item.match(
     new RegExp(`<${name}(?:\\s[^>]*)?>([\\s\\S]*?)</${name}>`),

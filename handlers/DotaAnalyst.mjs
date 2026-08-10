@@ -1,3 +1,5 @@
+// @ts-check
+
 "use strict";
 
 import Discord from "../lib/Discord.mjs";
@@ -27,6 +29,7 @@ const cacheNamespace = "dota-ai-analyzer";
 
 const environment = await secrets();
 
+/** @param {string} operationName */
 function createTimer(operationName) {
   const start = Date.now();
   console.log(`Starting ${operationName}...`);
@@ -50,6 +53,11 @@ const llm = new LLMClient({
   gemini: environment.gemini.apikey,
 });
 
+/**
+ * @param {string|number} match_id
+ * @param {string|number} player_id
+ * @param {string} interaction_token
+ */
 function createRetryRuleName(match_id, player_id, interaction_token) {
   // Hash the interaction token to keep rule name under 64 chars
   const tokenHash = crypto
@@ -60,6 +68,10 @@ function createRetryRuleName(match_id, player_id, interaction_token) {
   return `retry-${match_id}-${player_id}-${tokenHash}`;
 }
 
+/**
+ * @param {any} event the interaction payload relayed by the webhook handler
+ * @param {any} context
+ */
 export async function handler(event, context) {
   const {
     application_id,
@@ -171,7 +183,7 @@ export async function handler(event, context) {
     compactTimer.end();
 
     const player = fullMatch.players.find(
-      (player) => player.account_id === Number(player_id),
+      (/** @type {any} */ player) => player.account_id === Number(player_id),
     );
     const playerHero = DotaConstants.heroes[player.hero_id].name;
     const playerName = player.personaname;
@@ -196,6 +208,8 @@ export async function handler(event, context) {
     );
     analysisTimer.end();
 
+    // Open-ended: components is set below, for admins only.
+    /** @type {Record<string, any>} */
     const analysisPayload = {
       flags: 64,
       content: "",
@@ -234,7 +248,8 @@ export async function handler(event, context) {
     const cacheSetTimer = createTimer("cache set");
     await cache.set(cacheNamespace, cacheKey, JSON.stringify(analysisPayload));
     cacheSetTimer.end();
-  } catch (err) {
+  } catch (rawErr) {
+    const err = /** @type {Error} */ (rawErr);
     console.error("DotaAnalyst error:", err);
 
     let errorMessage =
@@ -255,6 +270,12 @@ export async function handler(event, context) {
   }
 }
 
+/**
+ * @param {any} match the compacted match this module builds
+ * @param {number} playerId
+ * @param {string} playerName
+ * @param {any} fullMatch the OpenDota match, unmodelled
+ */
 async function analyzeMatch(match, playerId, playerName, fullMatch) {
   const promptTimer = createTimer("prompt generation");
   const prompt = await generateAnalysisPrompt(
@@ -299,6 +320,10 @@ async function analyzeMatch(match, playerId, playerName, fullMatch) {
   return response.output;
 }
 
+/**
+ * @param {any} eventPayload replayed verbatim as the retry's input
+ * @param {any} context
+ */
 async function scheduleRetryAnalysis(eventPayload, context) {
   const { match_id, player_id, interaction_token } = eventPayload;
   const ruleName = createRetryRuleName(match_id, player_id, interaction_token);
@@ -325,12 +350,18 @@ async function scheduleRetryAnalysis(eventPayload, context) {
     console.log(
       `Created EventBridge schedule: ${ruleName} scheduled for ${scheduleTime.toISOString()}`,
     );
-  } catch (error) {
+  } catch (rawErr) {
+    const error = /** @type {Error} */ (rawErr);
     console.error(`Failed to schedule retry analysis: ${error.message}`);
     throw error;
   }
 }
 
+/**
+ * @param {string|number} match_id
+ * @param {string|number} player_id
+ * @param {string} interaction_token
+ */
 async function cleanupEventBridgeRule(match_id, player_id, interaction_token) {
   const ruleName = createRetryRuleName(match_id, player_id, interaction_token);
 
@@ -342,8 +373,9 @@ async function cleanupEventBridgeRule(match_id, player_id, interaction_token) {
     );
 
     console.log(`Cleaned up EventBridge schedule: ${ruleName}`);
-  } catch (error) {
+  } catch (rawErr) {
     // Don't throw error if schedule doesn't exist
+    const error = /** @type {Error} */ (rawErr);
     console.log(`Could not cleanup schedule ${ruleName}: ${error.message}`);
   }
 }

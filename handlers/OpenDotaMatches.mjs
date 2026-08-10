@@ -1,3 +1,5 @@
+// @ts-check
+
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import {
   DynamoDBDocumentClient,
@@ -20,6 +22,7 @@ const openDotaAPI = new OpenDotaAPI(cache, 10_000);
 const environment = await secrets();
 const discord = new Discord(environment.discord);
 
+/** @param {number} number */
 function formatNumber(number) {
   return number >= 1000 ? (number / 1000).toFixed(1) + "k" : number;
 }
@@ -31,7 +34,7 @@ async function loadDBUsers() {
 
   try {
     const result = await docClient.send(new ScanCommand(scanParams));
-    return result.Items;
+    return result.Items ?? [];
   } catch (err) {
     console.error("DynamoDB.get error:");
     console.error(err);
@@ -51,10 +54,10 @@ async function loadConfig() {
 
   try {
     const result = await docClient.send(new ScanCommand(scanParams));
-    return result.Items.reduce((config, item) => {
+    return (result.Items ?? []).reduce((config, item) => {
       config[item.Key] = item.Value;
       return config;
-    }, {});
+    }, /** @type {Record<string, any>} */ ({}));
   } catch (err) {
     console.error("DynamoDB.get error:");
     console.error(err);
@@ -63,14 +66,18 @@ async function loadConfig() {
   }
 }
 
+/** @param {any[]} dbUsers */
 async function collectNewMatches(dbUsers) {
   console.log(`Checking matches for ${dbUsers.length} users`);
 
+  /** @type {Record<string, any>} */
   const users = {};
+  /** @type {Record<string, any>} */
   const matches = {};
 
   await Promise.all(
-    dbUsers.map(async (user) => {
+    dbUsers.map(async (/** @type {any} */ user) => {
+      /** @type {any[]} */
       let recentMatches;
       // Only this stage is guarded. Later ones abort the run instead, which is safe:
       // updateDB never runs, so the next poll picks the same matches back up.
@@ -117,6 +124,7 @@ async function collectNewMatches(dbUsers) {
   return { users, matches };
 }
 
+/** @param {Record<string, any>} users */
 async function loadPlayers(users) {
   await Promise.all(
     Object.keys(users).map(async (steamID) => {
@@ -126,12 +134,16 @@ async function loadPlayers(users) {
   );
 }
 
+/**
+ * @param {Record<string, any>} users
+ * @param {Record<string, any>} matches
+ */
 async function loadMatches(users, matches) {
   await Promise.all(
     Object.keys(matches).map(async (matchID) => {
       const match = await openDotaAPI.getMatch(matchID);
       matches[matchID] = match;
-      match.players.forEach((player) => {
+      match.players.forEach((/** @type {any} */ player) => {
         if (player.account_id in users) {
           users[player.account_id].personaname = player.personaname;
         }
@@ -140,6 +152,10 @@ async function loadMatches(users, matches) {
   );
 }
 
+/**
+ * @param {number} modeID
+ * @param {Record<string, any>} config
+ */
 function getGameMode(modeID, config) {
   if (modeID === 19 && "event_name" in config) {
     return config.event_name;
@@ -148,9 +164,16 @@ function getGameMode(modeID, config) {
   return DotaConstants.gameModes[modeID];
 }
 
+/**
+ * @param {string} steamID
+ * @param {any} user
+ * @param {string|number} matchID
+ * @param {any} match the OpenDota match, unmodelled
+ * @param {Record<string, any>} config
+ */
 function createDiscordMessageForMatch(steamID, user, matchID, match, config) {
   const dotaPlayer = match.players.find(
-    (player) => player.account_id == steamID,
+    (/** @type {any} */ player) => player.account_id == steamID,
   );
 
   // OpenDota reports account_id as null for players who have not exposed their match
@@ -174,18 +197,20 @@ function createDiscordMessageForMatch(steamID, user, matchID, match, config) {
   const heroDamage = formatNumber(dotaPlayer.hero_damage);
   const towerDamage = formatNumber(dotaPlayer.tower_damage);
   const heroHealing = formatNumber(dotaPlayer.hero_healing);
+  /** @type {any[]} */
   const MMRs = match.players
-    .map((player) => {
+    .map((/** @type {any} */ player) => {
       return player.solo_competitive_rank;
     })
-    .filter((rank) => {
+    .filter((/** @type {any} */ rank) => {
       return rank;
     });
+  /** @type {any[]} */
   const rankTiers = match.players
-    .map((player) => {
+    .map((/** @type {any} */ player) => {
       return player.rank_tier;
     })
-    .filter((rank) => {
+    .filter((/** @type {any} */ rank) => {
       return rank;
     });
   const durationHours = Math.floor(match.duration / 3600);
@@ -206,6 +231,8 @@ function createDiscordMessageForMatch(steamID, user, matchID, match, config) {
     "match",
   );
   const description = `${user.personaname} ${result} ${played} as ${hero.name}`;
+  // Open-ended: the optional rank fields are pushed onto `fields` below.
+  /** @type {Record<string, any>} */
   const embed = {
     author: {
       name: user.personaname,
@@ -291,13 +318,19 @@ function createDiscordMessageForMatch(steamID, user, matchID, match, config) {
 // Resolves each user's newest announced match, which is what their watermark may
 // advance to, and is absent when their first match failed to send. Their matches
 // are already oldest first, so a failure stops that user where Discord did.
+/**
+ * @param {Record<string, any>} users
+ * @param {Record<string, any>} matches
+ * @param {Record<string, any>} config
+ */
 async function sendDiscordMessages(users, matches, config) {
+  /** @type {{steamID: string, matchID: any, message: any}[]} */
   const queue = [];
 
   Object.keys(users).forEach((steamID) => {
     const user = users[steamID];
 
-    user.matches.forEach((matchID) => {
+    user.matches.forEach((/** @type {any} */ matchID) => {
       queue.push({
         steamID,
         matchID,
@@ -312,6 +345,7 @@ async function sendDiscordMessages(users, matches, config) {
     });
   });
 
+  /** @type {Record<string, any>} */
   const announced = {};
   const stalled = new Set();
 
@@ -344,6 +378,10 @@ async function sendDiscordMessages(users, matches, config) {
   return announced;
 }
 
+/**
+ * @param {Record<string, any>} users
+ * @param {Record<string, any>} announced
+ */
 async function updateDB(users, announced) {
   await Promise.all(
     Object.keys(announced).map(async (steamID) => {

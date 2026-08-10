@@ -1,0 +1,22 @@
+{
+  // Type-checks the Lambda source in place. Nothing here feeds the build: esbuild
+  // bundles the .mjs files directly and never type-checks, so this is a separate
+  // gate run by `npm run typecheck`. cdk/ has its own tsconfig and is not included.
+  "compilerOptions": {
+    "target": "ES2023",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "lib": ["es2023"],
+    "strict": true,
+    "noImplicitReturns": true,
+    "skipLibCheck": true,
+    "types": ["node"],
+    "allowJs": true,
+    // Off by design: files opt in with `// @ts-check` so the conversion can go one
+    // file at a time. Flipping this to true checks everything at once instead.
+    "checkJs": false,
+    "noEmit": true
+  },
+  "include": ["handlers/**/*.mjs", "lib/**/*.mjs"],
+  "exclude": ["node_modules", "cdk"]
+}

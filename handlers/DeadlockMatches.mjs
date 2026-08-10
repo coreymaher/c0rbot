@@ -1,3 +1,5 @@
+// @ts-check
+
 "use strict";
 
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
@@ -34,7 +36,7 @@ const scanParams = {
 async function loadDBUsers() {
   try {
     const data = await docClient.send(new ScanCommand(scanParams));
-    return data.Items;
+    return data.Items ?? [];
   } catch (ex) {
     console.error(`DynamoDB.get error: ${ex}`);
   }
@@ -42,6 +44,10 @@ async function loadDBUsers() {
   return [];
 }
 
+/**
+ * @param {number} playerID
+ * @param {number} lastMatchID
+ */
 async function updateDB(playerID, lastMatchID) {
   const params = {
     TableName: tables.matches,
@@ -64,10 +70,12 @@ async function updateDB(playerID, lastMatchID) {
   }
 }
 
+/** @param {number} number */
 function formatNumber(number) {
   return number >= 1000 ? (number / 1000).toFixed(1) + "k" : number;
 }
 
+/** @param {number} duration seconds */
 function formatDuration(duration) {
   const hours = Math.floor(duration / 3600);
   const minutes = Math.floor((duration % 3600) / 60);
@@ -81,6 +89,13 @@ function formatDuration(duration) {
   return parts.join(" ");
 }
 
+/**
+ * @param {any} match one entry of the match-history response
+ * @param {any} user the DynamoDB record for the tracked player
+ * @returns {Promise<{error?: boolean, skipped?: boolean}>} `skipped` still
+ *   advances the watermark -- only `error` stops the run and leaves the match
+ *   to be retried
+ */
 async function handleMatch(match, user) {
   console.log(`Found match: ${match.match_id}`);
 
@@ -90,7 +105,7 @@ async function handleMatch(match, user) {
   // Skip matches with fewer than 2 real players (solo bot matches)
   if (metadata?.match_info?.players) {
     const realPlayerCount = metadata.match_info.players.filter(
-      (p) => p.account_id > 0,
+      (/** @type {any} */ p) => p.account_id > 0,
     ).length;
     if (realPlayerCount < 2) {
       console.log(
