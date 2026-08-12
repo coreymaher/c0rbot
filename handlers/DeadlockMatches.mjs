@@ -33,10 +33,11 @@ const scanParams = {
   },
 };
 
+/** @returns {Promise<TrackedPlayer[]>} */
 async function loadDBUsers() {
   try {
     const data = await docClient.send(new ScanCommand(scanParams));
-    return data.Items ?? [];
+    return /** @type {TrackedPlayer[]} */ (data.Items ?? []);
   } catch (ex) {
     console.error(`DynamoDB.get error: ${ex}`);
   }
@@ -90,8 +91,36 @@ function formatDuration(duration) {
 }
 
 /**
- * @param {any} match one entry of the match-history response
- * @param {any} user the DynamoDB record for the tracked player
+ * A row of the matches table, which is this repo's own schema.
+ *
+ * @typedef {object} TrackedPlayer
+ * @property {number} player_id
+ * @property {string} name
+ * @property {string} avatar
+ * @property {number} last_match_id
+ */
+
+/**
+ * The fields this handler reads off one match-history entry. Asserted, not
+ * validated: the API returns more, and nothing checks these are present.
+ *
+ * @typedef {object} MatchHistoryEntry
+ * @property {number} match_id
+ * @property {number} match_result
+ * @property {number} player_team
+ * @property {number} hero_id
+ * @property {number} match_duration_s
+ * @property {number} net_worth
+ * @property {number} last_hits
+ * @property {number} denies
+ * @property {number} player_kills
+ * @property {number} player_deaths
+ * @property {number} player_assists
+ */
+
+/**
+ * @param {MatchHistoryEntry} match one entry of the match-history response
+ * @param {TrackedPlayer} user
  * @returns {Promise<{error?: boolean, skipped?: boolean}>} `skipped` still
  *   advances the watermark -- only `error` stops the run and leaves the match
  *   to be retried

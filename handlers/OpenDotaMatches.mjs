@@ -22,11 +22,64 @@ const openDotaAPI = new OpenDotaAPI(cache, 10_000);
 const environment = await secrets();
 const discord = new Discord(environment.discord);
 
+/**
+ * The fields this handler reads off OpenDota's responses. Asserted, not
+ * validated: OpenDota returns far more, and nothing checks these are present.
+ * Adding a field here is the price of reading one.
+ *
+ * @typedef {object} DotaMatchPlayer
+ * @property {number|null} account_id null when the player has not exposed
+ *   their match data, which is why the lookup below can miss
+ * @property {string} personaname
+ * @property {number} hero_id
+ * @property {number} player_slot
+ * @property {number} kills
+ * @property {number} deaths
+ * @property {number} assists
+ * @property {number} gold_per_min
+ * @property {number} xp_per_min
+ * @property {number} hero_damage
+ * @property {number} hero_healing
+ * @property {number} tower_damage
+ * @property {number|null} [solo_competitive_rank]
+ * @property {number|null} [rank_tier]
+ */
+
+/**
+ * @typedef {object} DotaMatch
+ * @property {number} match_id
+ * @property {number} duration
+ * @property {number} game_mode
+ * @property {number} lobby_type
+ * @property {boolean} radiant_win
+ * @property {number} [skill]
+ * @property {DotaMatchPlayer[]} players
+ */
+
+/**
+ * A row of the tracked-players table, which is this repo's own schema.
+ *
+ * @typedef {object} TrackedPlayer
+ * @property {number} steamID
+ * @property {number} last_matchID
+ */
+
+/**
+ * A tracked player merged with their OpenDota profile, which is what the
+ * announcement and the watermark update both read.
+ *
+ * @typedef {object} AnnouncedPlayer
+ * @property {string} personaname
+ * @property {{avatar: string}} profile
+ * @property {number[]} matches oldest first
+ */
+
 /** @param {number} number */
 function formatNumber(number) {
   return number >= 1000 ? (number / 1000).toFixed(1) + "k" : number;
 }
 
+/** @returns {Promise<TrackedPlayer[]>} */
 async function loadDBUsers() {
   const scanParams = {
     TableName: process.env.table,
@@ -34,7 +87,7 @@ async function loadDBUsers() {
 
   try {
     const result = await docClient.send(new ScanCommand(scanParams));
-    return result.Items ?? [];
+    return /** @type {TrackedPlayer[]} */ (result.Items ?? []);
   } catch (err) {
     console.error("DynamoDB.get error:");
     console.error(err);
@@ -66,7 +119,7 @@ async function loadConfig() {
   }
 }
 
-/** @param {any[]} dbUsers */
+/** @param {TrackedPlayer[]} dbUsers */
 async function collectNewMatches(dbUsers) {
   console.log(`Checking matches for ${dbUsers.length} users`);
 
@@ -76,7 +129,7 @@ async function collectNewMatches(dbUsers) {
   const matches = {};
 
   await Promise.all(
-    dbUsers.map(async (/** @type {any} */ user) => {
+    dbUsers.map(async (user) => {
       /** @type {any[]} */
       let recentMatches;
       // Only this stage is guarded. Later ones abort the run instead, which is safe:
@@ -166,14 +219,14 @@ function getGameMode(modeID, config) {
 
 /**
  * @param {string} steamID
- * @param {any} user
+ * @param {AnnouncedPlayer} user
  * @param {string|number} matchID
- * @param {any} match the OpenDota match, unmodelled
+ * @param {DotaMatch} match
  * @param {Record<string, any>} config
  */
 function createDiscordMessageForMatch(steamID, user, matchID, match, config) {
   const dotaPlayer = match.players.find(
-    (/** @type {any} */ player) => player.account_id == steamID,
+    (player) => player.account_id === Number(steamID),
   );
 
   // OpenDota reports account_id as null for players who have not exposed their match
@@ -188,7 +241,7 @@ function createDiscordMessageForMatch(steamID, user, matchID, match, config) {
     return null;
   }
 
-  const skill = DotaConstants.skillIDs[match.skill];
+  const skill = DotaConstants.skillIDs[match.skill ?? 0];
   const lobby = DotaConstants.lobbyTypes[match.lobby_type];
   const gameMode = getGameMode(match.game_mode, config);
   const hero = DotaConstants.heroes[dotaPlayer.hero_id];
@@ -199,15 +252,15 @@ function createDiscordMessageForMatch(steamID, user, matchID, match, config) {
   const heroHealing = formatNumber(dotaPlayer.hero_healing);
   /** @type {any[]} */
   const MMRs = match.players
-    .map((/** @type {any} */ player) => {
+    .map((player) => {
       return player.solo_competitive_rank;
     })
-    .filter((/** @type {any} */ rank) => {
+    .filter((rank) => {
       return rank;
     });
   /** @type {any[]} */
   const rankTiers = match.players
-    .map((/** @type {any} */ player) => {
+    .map((player) => {
       return player.rank_tier;
     })
     .filter((/** @type {any} */ rank) => {
