@@ -29,6 +29,13 @@ const cacheNamespace = "dota-ai-analyzer";
 
 const environment = await secrets();
 
+/**
+ * The three fields this handler reads off a match player. Asserted, not
+ * validated -- but enough for the compiler to hold the absent case.
+ *
+ * @typedef {{account_id: number|null, hero_id: number, personaname: string}} MatchPlayer
+ */
+
 /** @param {string} operationName */
 function createTimer(operationName) {
   const start = Date.now();
@@ -182,10 +189,26 @@ export async function handler(event, context) {
     const match = await generateCompactMatch(fullMatch, Number(player_id));
     compactTimer.end();
 
-    const player = fullMatch.players.find(
-      (/** @type {any} */ player) => player.account_id === Number(player_id),
+    // Typed so the compiler keeps the miss below handled. OpenDota reports
+    // account_id as null for players who have not exposed their match data, so
+    // the player can be absent from their own match -- the poller guards the
+    // same lookup for the same reason.
+    const player = /** @type {MatchPlayer[]} */ (fullMatch.players).find(
+      (p) => p.account_id === Number(player_id),
     );
-    const playerHero = DotaConstants.heroes[player.hero_id].name;
+
+    if (!player) {
+      await discord.sendInteractionResponse(application_id, interaction_token, {
+        flags: 64,
+        content: "Player not found in this match.",
+        allowed_mentions: { parse: [] },
+      });
+      return;
+    }
+
+    // dotaconstants trails Valve by a release or two, so a hero added this
+    // patch is missing rather than merely unnamed.
+    const playerHero = DotaConstants.heroes[player.hero_id]?.name || "Unknown";
     const playerName = player.personaname;
 
     await discord.sendInteractionResponse(
