@@ -12,6 +12,7 @@ const PRICING = {
   "gemini-3.5-flash": { input: 1.5, output: 9.0 },
   "gemini-3.5-flash-lite": { input: 0.3, output: 2.5 },
   "gemini-3.6-flash": { input: 1.5, output: 7.5 },
+  "gemini-3.7-flash": { input: 0.75, output: 3.75 },
 };
 
 export function isPriced(model) {
