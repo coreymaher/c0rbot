@@ -1,3 +1,5 @@
+// @ts-check
+
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import {
   DynamoDBDocumentClient,
@@ -20,10 +22,64 @@ const openDotaAPI = new OpenDotaAPI(cache, 10_000);
 const environment = await secrets();
 const discord = new Discord(environment.discord);
 
+/**
+ * The fields this handler reads off OpenDota's responses. Asserted, not
+ * validated: OpenDota returns far more, and nothing checks these are present.
+ * Adding a field here is the price of reading one.
+ *
+ * @typedef {object} DotaMatchPlayer
+ * @property {number|null} account_id null when the player has not exposed
+ *   their match data, which is why the lookup below can miss
+ * @property {string} personaname
+ * @property {number} hero_id
+ * @property {number} player_slot
+ * @property {number} kills
+ * @property {number} deaths
+ * @property {number} assists
+ * @property {number} gold_per_min
+ * @property {number} xp_per_min
+ * @property {number} hero_damage
+ * @property {number} hero_healing
+ * @property {number} tower_damage
+ * @property {number|null} [solo_competitive_rank]
+ * @property {number|null} [rank_tier]
+ */
+
+/**
+ * @typedef {object} DotaMatch
+ * @property {number} match_id
+ * @property {number} duration
+ * @property {number} game_mode
+ * @property {number} lobby_type
+ * @property {boolean} radiant_win
+ * @property {number} [skill]
+ * @property {DotaMatchPlayer[]} players
+ */
+
+/**
+ * A row of the tracked-players table, which is this repo's own schema.
+ *
+ * @typedef {object} TrackedPlayer
+ * @property {number} steamID
+ * @property {number} last_matchID
+ */
+
+/**
+ * A tracked player merged with their OpenDota profile, which is what the
+ * announcement and the watermark update both read.
+ *
+ * @typedef {object} AnnouncedPlayer
+ * @property {string} personaname
+ * @property {{avatar: string}} profile
+ * @property {number[]} matches oldest first
+ */
+
+/** @param {number} number */
 function formatNumber(number) {
   return number >= 1000 ? (number / 1000).toFixed(1) + "k" : number;
 }
 
+/** @returns {Promise<TrackedPlayer[]>} */
 async function loadDBUsers() {
   const scanParams = {
     TableName: process.env.table,
@@ -31,7 +87,7 @@ async function loadDBUsers() {
 
   try {
     const result = await docClient.send(new ScanCommand(scanParams));
-    return result.Items;
+    return /** @type {TrackedPlayer[]} */ (result.Items ?? []);
   } catch (err) {
     console.error("DynamoDB.get error:");
     console.error(err);
@@ -51,10 +107,10 @@ async function loadConfig() {
 
   try {
     const result = await docClient.send(new ScanCommand(scanParams));
-    return result.Items.reduce((config, item) => {
+    return (result.Items ?? []).reduce((config, item) => {
       config[item.Key] = item.Value;
       return config;
-    }, {});
+    }, /** @type {Record<string, any>} */ ({}));
   } catch (err) {
     console.error("DynamoDB.get error:");
     console.error(err);
@@ -63,14 +119,18 @@ async function loadConfig() {
   }
 }
 
+/** @param {TrackedPlayer[]} dbUsers */
 async function collectNewMatches(dbUsers) {
   console.log(`Checking matches for ${dbUsers.length} users`);
 
+  /** @type {Record<string, any>} */
   const users = {};
+  /** @type {Record<string, any>} */
   const matches = {};
 
   await Promise.all(
     dbUsers.map(async (user) => {
+      /** @type {any[]} */
       let recentMatches;
       // Only this stage is guarded. Later ones abort the run instead, which is safe:
       // updateDB never runs, so the next poll picks the same matches back up.
@@ -117,6 +177,7 @@ async function collectNewMatches(dbUsers) {
   return { users, matches };
 }
 
+/** @param {Record<string, any>} users */
 async function loadPlayers(users) {
   await Promise.all(
     Object.keys(users).map(async (steamID) => {
@@ -126,12 +187,16 @@ async function loadPlayers(users) {
   );
 }
 
+/**
+ * @param {Record<string, any>} users
+ * @param {Record<string, any>} matches
+ */
 async function loadMatches(users, matches) {
   await Promise.all(
     Object.keys(matches).map(async (matchID) => {
       const match = await openDotaAPI.getMatch(matchID);
       matches[matchID] = match;
-      match.players.forEach((player) => {
+      match.players.forEach((/** @type {any} */ player) => {
         if (player.account_id in users) {
           users[player.account_id].personaname = player.personaname;
         }
@@ -140,6 +205,10 @@ async function loadMatches(users, matches) {
   );
 }
 
+/**
+ * @param {number} modeID
+ * @param {Record<string, any>} config
+ */
 function getGameMode(modeID, config) {
   if (modeID === 19 && "event_name" in config) {
     return config.event_name;
@@ -148,9 +217,16 @@ function getGameMode(modeID, config) {
   return DotaConstants.gameModes[modeID];
 }
 
+/**
+ * @param {string} steamID
+ * @param {AnnouncedPlayer} user
+ * @param {string|number} matchID
+ * @param {DotaMatch} match
+ * @param {Record<string, any>} config
+ */
 function createDiscordMessageForMatch(steamID, user, matchID, match, config) {
   const dotaPlayer = match.players.find(
-    (player) => player.account_id == steamID,
+    (player) => player.account_id === Number(steamID),
   );
 
   // OpenDota reports account_id as null for players who have not exposed their match
@@ -165,7 +241,7 @@ function createDiscordMessageForMatch(steamID, user, matchID, match, config) {
     return null;
   }
 
-  const skill = DotaConstants.skillIDs[match.skill];
+  const skill = DotaConstants.skillIDs[match.skill ?? 0];
   const lobby = DotaConstants.lobbyTypes[match.lobby_type];
   const gameMode = getGameMode(match.game_mode, config);
   const hero = DotaConstants.heroes[dotaPlayer.hero_id];
@@ -174,6 +250,7 @@ function createDiscordMessageForMatch(steamID, user, matchID, match, config) {
   const heroDamage = formatNumber(dotaPlayer.hero_damage);
   const towerDamage = formatNumber(dotaPlayer.tower_damage);
   const heroHealing = formatNumber(dotaPlayer.hero_healing);
+  /** @type {any[]} */
   const MMRs = match.players
     .map((player) => {
       return player.solo_competitive_rank;
@@ -181,11 +258,12 @@ function createDiscordMessageForMatch(steamID, user, matchID, match, config) {
     .filter((rank) => {
       return rank;
     });
+  /** @type {any[]} */
   const rankTiers = match.players
     .map((player) => {
       return player.rank_tier;
     })
-    .filter((rank) => {
+    .filter((/** @type {any} */ rank) => {
       return rank;
     });
   const durationHours = Math.floor(match.duration / 3600);
@@ -197,7 +275,14 @@ function createDiscordMessageForMatch(steamID, user, matchID, match, config) {
   }
   duration += `${durationMinutes}m ${durationSeconds}s`;
 
-  const thumbnail_url = `http://cdn.dota2.com/apps/dota2/images/dota_react/heroes/${hero.image}.png`;
+  // dotaconstants trails Valve by a release or two, so a hero added this patch is
+  // absent here. Announce the match without a name or portrait rather than throw:
+  // every embed in the run is built before the first send, so one throw would drop
+  // all of them, and it would throw again on every retry because updateDB never
+  // advances past the match.
+  const thumbnail_url = hero
+    ? `http://cdn.dota2.com/apps/dota2/images/dota_react/heroes/${hero.image}.png`
+    : undefined;
 
   const played = withArticle(
     skill && `${skill} skill`,
@@ -205,7 +290,9 @@ function createDiscordMessageForMatch(steamID, user, matchID, match, config) {
     gameMode,
     "match",
   );
-  const description = `${user.personaname} ${result} ${played} as ${hero.name}`;
+  const description = `${user.personaname} ${result} ${played} as ${hero?.name || "an unknown hero"}`;
+  // Open-ended: the optional rank fields are pushed onto `fields` below.
+  /** @type {Record<string, any>} */
   const embed = {
     author: {
       name: user.personaname,
@@ -230,9 +317,7 @@ function createDiscordMessageForMatch(steamID, user, matchID, match, config) {
       },
       { name: "duration", value: duration, inline: true },
     ],
-    thumbnail: {
-      url: thumbnail_url,
-    },
+    ...(thumbnail_url && { thumbnail: { url: thumbnail_url } }),
   };
 
   if (MMRs.length > 1) {
@@ -247,23 +332,31 @@ function createDiscordMessageForMatch(steamID, user, matchID, match, config) {
     });
   }
 
-  if (rankTiers.length > 1) {
-    const totalTierIndex = rankTiers
-      .map((rank) => {
-        return DotaConstants.rankTierValues.indexOf(rank);
-      })
-      .reduce((total, rank) => {
-        return (total += rank);
-      }, 0);
-    const estimatedTierIndex = Math.round(totalTierIndex / rankTiers.length);
+  // Averaging index positions rather than the values, because the tiers are not a
+  // number line. Unrecognised tiers are dropped rather than averaged in as -1,
+  // which would silently drag the result toward Herald -- averageBadge does the
+  // same for Deadlock.
+  const tierIndexes = rankTiers
+    .map((rank) => DotaConstants.rankTierValues.indexOf(rank))
+    .filter((index) => index >= 0);
+
+  if (tierIndexes.length > 1) {
+    const totalTierIndex = tierIndexes.reduce(
+      (total, index) => total + index,
+      0,
+    );
+    const estimatedTierIndex = Math.round(totalTierIndex / tierIndexes.length);
     const estimatedTier = DotaConstants.rankTierValues[estimatedTierIndex];
-    const tier = Math.floor(estimatedTier / 10);
-    const subTier = estimatedTier % 10;
-    embed.fields.push({
-      name: "tier",
-      value: `${DotaConstants.rankTiers[tier]} ${subTier}`,
-      inline: true,
-    });
+    const tierName =
+      estimatedTier && DotaConstants.rankTiers[Math.floor(estimatedTier / 10)];
+
+    if (tierName) {
+      embed.fields.push({
+        name: "tier",
+        value: `${tierName} ${estimatedTier % 10}`,
+        inline: true,
+      });
+    }
   }
 
   embed.fields.push({
@@ -291,13 +384,19 @@ function createDiscordMessageForMatch(steamID, user, matchID, match, config) {
 // Resolves each user's newest announced match, which is what their watermark may
 // advance to, and is absent when their first match failed to send. Their matches
 // are already oldest first, so a failure stops that user where Discord did.
+/**
+ * @param {Record<string, any>} users
+ * @param {Record<string, any>} matches
+ * @param {Record<string, any>} config
+ */
 async function sendDiscordMessages(users, matches, config) {
+  /** @type {{steamID: string, matchID: any, message: any}[]} */
   const queue = [];
 
   Object.keys(users).forEach((steamID) => {
     const user = users[steamID];
 
-    user.matches.forEach((matchID) => {
+    user.matches.forEach((/** @type {any} */ matchID) => {
       queue.push({
         steamID,
         matchID,
@@ -312,6 +411,7 @@ async function sendDiscordMessages(users, matches, config) {
     });
   });
 
+  /** @type {Record<string, any>} */
   const announced = {};
   const stalled = new Set();
 
@@ -344,6 +444,10 @@ async function sendDiscordMessages(users, matches, config) {
   return announced;
 }
 
+/**
+ * @param {Record<string, any>} users
+ * @param {Record<string, any>} announced
+ */
 async function updateDB(users, announced) {
   await Promise.all(
     Object.keys(announced).map(async (steamID) => {

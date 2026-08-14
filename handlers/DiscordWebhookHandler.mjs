@@ -1,3 +1,5 @@
+// @ts-check
+
 "use strict";
 
 import { LambdaClient, InvokeCommand } from "@aws-sdk/client-lambda";
@@ -7,9 +9,16 @@ const lambda = new LambdaClient({});
 
 const environment = await secrets();
 
+/** @param {string} hex */
 const hexToBytes = (hex) => Uint8Array.from(Buffer.from(hex, "hex"));
 const publicKey = hexToBytes(environment.discord.publicKey);
 
+/**
+ * @param {object} request
+ * @param {string} request.rawBody the body exactly as sent, since the signature
+ *   covers the bytes and not the parsed object
+ * @param {Record<string, string|undefined>} request.headers
+ */
 export async function verifyDiscordRequest({ rawBody, headers }) {
   const sig = headers["x-signature-ed25519"] || headers["X-Signature-Ed25519"];
   const ts =
@@ -35,6 +44,10 @@ export async function verifyDiscordRequest({ rawBody, headers }) {
   );
 }
 
+/**
+ * @param {any} payload
+ * @param {number} [statusCode]
+ */
 function makeResponse(payload, statusCode = 200) {
   return {
     statusCode,
@@ -43,6 +56,7 @@ function makeResponse(payload, statusCode = 200) {
   };
 }
 
+/** @param {any} event the Function URL request, unmodelled */
 export async function handler(event) {
   console.log({ event });
 

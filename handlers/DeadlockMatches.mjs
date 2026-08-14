@@ -1,3 +1,5 @@
+// @ts-check
+
 "use strict";
 
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
@@ -31,10 +33,11 @@ const scanParams = {
   },
 };
 
+/** @returns {Promise<TrackedPlayer[]>} */
 async function loadDBUsers() {
   try {
     const data = await docClient.send(new ScanCommand(scanParams));
-    return data.Items;
+    return /** @type {TrackedPlayer[]} */ (data.Items ?? []);
   } catch (ex) {
     console.error(`DynamoDB.get error: ${ex}`);
   }
@@ -42,6 +45,10 @@ async function loadDBUsers() {
   return [];
 }
 
+/**
+ * @param {number} playerID
+ * @param {number} lastMatchID
+ */
 async function updateDB(playerID, lastMatchID) {
   const params = {
     TableName: tables.matches,
@@ -64,10 +71,12 @@ async function updateDB(playerID, lastMatchID) {
   }
 }
 
+/** @param {number} number */
 function formatNumber(number) {
   return number >= 1000 ? (number / 1000).toFixed(1) + "k" : number;
 }
 
+/** @param {number} duration seconds */
 function formatDuration(duration) {
   const hours = Math.floor(duration / 3600);
   const minutes = Math.floor((duration % 3600) / 60);
@@ -81,6 +90,41 @@ function formatDuration(duration) {
   return parts.join(" ");
 }
 
+/**
+ * A row of the matches table, which is this repo's own schema.
+ *
+ * @typedef {object} TrackedPlayer
+ * @property {number} player_id
+ * @property {string} name
+ * @property {string} avatar
+ * @property {number} last_match_id
+ */
+
+/**
+ * The fields this handler reads off one match-history entry. Asserted, not
+ * validated: the API returns more, and nothing checks these are present.
+ *
+ * @typedef {object} MatchHistoryEntry
+ * @property {number} match_id
+ * @property {number} match_result
+ * @property {number} player_team
+ * @property {number} hero_id
+ * @property {number} match_duration_s
+ * @property {number} net_worth
+ * @property {number} last_hits
+ * @property {number} denies
+ * @property {number} player_kills
+ * @property {number} player_deaths
+ * @property {number} player_assists
+ */
+
+/**
+ * @param {MatchHistoryEntry} match one entry of the match-history response
+ * @param {TrackedPlayer} user
+ * @returns {Promise<{error?: boolean, skipped?: boolean}>} `skipped` still
+ *   advances the watermark -- only `error` stops the run and leaves the match
+ *   to be retried
+ */
 async function handleMatch(match, user) {
   console.log(`Found match: ${match.match_id}`);
 
@@ -90,7 +134,7 @@ async function handleMatch(match, user) {
   // Skip matches with fewer than 2 real players (solo bot matches)
   if (metadata?.match_info?.players) {
     const realPlayerCount = metadata.match_info.players.filter(
-      (p) => p.account_id > 0,
+      (/** @type {any} */ p) => p.account_id > 0,
     ).length;
     if (realPlayerCount < 2) {
       console.log(
@@ -101,6 +145,9 @@ async function handleMatch(match, user) {
   }
 
   const result = match.match_result === match.player_team ? "won" : "lost";
+  // A hero added since this table was last updated is absent. Announce the match
+  // without a name or portrait rather than throw: handler() does not catch, so a
+  // throw here strands the watermark on this match and every later poll repeats it.
   const hero = constants.heroes[match.hero_id];
 
   const played = withArticle(
@@ -109,7 +156,7 @@ async function handleMatch(match, user) {
     constants.gameModes[metadata?.match_info?.game_mode],
     "match",
   );
-  const description = `${user.name} ${result} ${played} as ${hero.name}`;
+  const description = `${user.name} ${result} ${played} as ${hero?.name || "an unknown hero"}`;
   const fields = [];
 
   fields.push({
@@ -149,7 +196,7 @@ async function handleMatch(match, user) {
   }
 
   let thumbnail = undefined;
-  if (hero.image) {
+  if (hero?.image) {
     thumbnail = {
       url: hero.image,
     };

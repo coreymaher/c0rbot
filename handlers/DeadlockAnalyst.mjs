@@ -1,3 +1,5 @@
+// @ts-check
+
 "use strict";
 
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
@@ -29,6 +31,7 @@ const cacheNamespace = "deadlock-ai-analyzer";
 
 const environment = await secrets();
 
+/** @param {string} operationName */
 function createTimer(operationName) {
   const start = Date.now();
   console.log(`Starting ${operationName}...`);
@@ -40,6 +43,10 @@ function createTimer(operationName) {
   };
 }
 
+/**
+ * @param {string|number} player_id
+ * @returns {Promise<string|null>}
+ */
 async function getPlayerName(player_id) {
   try {
     const result = await docClient.send(
@@ -66,6 +73,10 @@ const llm = new LLMClient({
   gemini: environment.gemini.apikey,
 });
 
+/**
+ * @param {any} event the interaction payload relayed by the webhook handler
+ * @param {any} context
+ */
 export async function handler(event, context) {
   const {
     application_id,
@@ -137,7 +148,7 @@ export async function handler(event, context) {
     const matchData = rawMatchData.match_info;
 
     const player = matchData.players.find(
-      (p) => p.account_id === Number(player_id),
+      (/** @type {any} */ p) => p.account_id === Number(player_id),
     );
 
     if (!player) {
@@ -194,6 +205,8 @@ export async function handler(event, context) {
     const analysis = await analyzeMatch(compactMatch, playerName);
     analysisTimer.end();
 
+    // Open-ended: components is set below, for admins only.
+    /** @type {Record<string, any>} */
     const analysisPayload = {
       flags: 64,
       content: "",
@@ -234,7 +247,8 @@ export async function handler(event, context) {
     const cacheSetTimer = createTimer("cache set");
     await cache.set(cacheNamespace, cacheKey, JSON.stringify(analysisPayload));
     cacheSetTimer.end();
-  } catch (err) {
+  } catch (rawErr) {
+    const err = /** @type {Error} */ (rawErr);
     console.error("DeadlockAnalyst error:", err);
 
     let errorMessage =
@@ -255,6 +269,11 @@ export async function handler(event, context) {
   }
 }
 
+/**
+ * @param {any} compactMatch the compacted match this module builds
+ * @param {string|null} playerName null when the player has no stored name,
+ *   which the prompt and the embed title both phrase around
+ */
 async function analyzeMatch(compactMatch, playerName) {
   const prompt = generateAnalysisPrompt(compactMatch, playerName);
 

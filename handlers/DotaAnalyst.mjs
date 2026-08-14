@@ -1,3 +1,5 @@
+// @ts-check
+
 "use strict";
 
 import Discord from "../lib/Discord.mjs";
@@ -27,6 +29,14 @@ const cacheNamespace = "dota-ai-analyzer";
 
 const environment = await secrets();
 
+/**
+ * The three fields this handler reads off a match player. Asserted, not
+ * validated -- but enough for the compiler to hold the absent case.
+ *
+ * @typedef {{account_id: number|null, hero_id: number, personaname: string}} MatchPlayer
+ */
+
+/** @param {string} operationName */
 function createTimer(operationName) {
   const start = Date.now();
   console.log(`Starting ${operationName}...`);
@@ -50,6 +60,11 @@ const llm = new LLMClient({
   gemini: environment.gemini.apikey,
 });
 
+/**
+ * @param {string|number} match_id
+ * @param {string|number} player_id
+ * @param {string} interaction_token
+ */
 function createRetryRuleName(match_id, player_id, interaction_token) {
   // Hash the interaction token to keep rule name under 64 chars
   const tokenHash = crypto
@@ -60,6 +75,10 @@ function createRetryRuleName(match_id, player_id, interaction_token) {
   return `retry-${match_id}-${player_id}-${tokenHash}`;
 }
 
+/**
+ * @param {any} event the interaction payload relayed by the webhook handler
+ * @param {any} context
+ */
 export async function handler(event, context) {
   const {
     application_id,
@@ -170,10 +189,26 @@ export async function handler(event, context) {
     const match = await generateCompactMatch(fullMatch, Number(player_id));
     compactTimer.end();
 
-    const player = fullMatch.players.find(
-      (player) => player.account_id === Number(player_id),
+    // Typed so the compiler keeps the miss below handled. OpenDota reports
+    // account_id as null for players who have not exposed their match data, so
+    // the player can be absent from their own match -- the poller guards the
+    // same lookup for the same reason.
+    const player = /** @type {MatchPlayer[]} */ (fullMatch.players).find(
+      (p) => p.account_id === Number(player_id),
     );
-    const playerHero = DotaConstants.heroes[player.hero_id].name;
+
+    if (!player) {
+      await discord.sendInteractionResponse(application_id, interaction_token, {
+        flags: 64,
+        content: "Player not found in this match.",
+        allowed_mentions: { parse: [] },
+      });
+      return;
+    }
+
+    // dotaconstants trails Valve by a release or two, so a hero added this
+    // patch is missing rather than merely unnamed.
+    const playerHero = DotaConstants.heroes[player.hero_id]?.name || "Unknown";
     const playerName = player.personaname;
 
     await discord.sendInteractionResponse(
@@ -196,6 +231,8 @@ export async function handler(event, context) {
     );
     analysisTimer.end();
 
+    // Open-ended: components is set below, for admins only.
+    /** @type {Record<string, any>} */
     const analysisPayload = {
       flags: 64,
       content: "",
@@ -234,7 +271,8 @@ export async function handler(event, context) {
     const cacheSetTimer = createTimer("cache set");
     await cache.set(cacheNamespace, cacheKey, JSON.stringify(analysisPayload));
     cacheSetTimer.end();
-  } catch (err) {
+  } catch (rawErr) {
+    const err = /** @type {Error} */ (rawErr);
     console.error("DotaAnalyst error:", err);
 
     let errorMessage =
@@ -255,6 +293,12 @@ export async function handler(event, context) {
   }
 }
 
+/**
+ * @param {any} match the compacted match this module builds
+ * @param {number} playerId
+ * @param {string} playerName
+ * @param {any} fullMatch the OpenDota match, unmodelled
+ */
 async function analyzeMatch(match, playerId, playerName, fullMatch) {
   const promptTimer = createTimer("prompt generation");
   const prompt = await generateAnalysisPrompt(
@@ -299,6 +343,10 @@ async function analyzeMatch(match, playerId, playerName, fullMatch) {
   return response.output;
 }
 
+/**
+ * @param {any} eventPayload replayed verbatim as the retry's input
+ * @param {any} context
+ */
 async function scheduleRetryAnalysis(eventPayload, context) {
   const { match_id, player_id, interaction_token } = eventPayload;
   const ruleName = createRetryRuleName(match_id, player_id, interaction_token);
@@ -326,11 +374,16 @@ async function scheduleRetryAnalysis(eventPayload, context) {
       `Created EventBridge schedule: ${ruleName} scheduled for ${scheduleTime.toISOString()}`,
     );
   } catch (error) {
-    console.error(`Failed to schedule retry analysis: ${error.message}`);
+    console.error(`Failed to schedule retry analysis: ${error}`);
     throw error;
   }
 }
 
+/**
+ * @param {string|number} match_id
+ * @param {string|number} player_id
+ * @param {string} interaction_token
+ */
 async function cleanupEventBridgeRule(match_id, player_id, interaction_token) {
   const ruleName = createRetryRuleName(match_id, player_id, interaction_token);
 
@@ -344,6 +397,6 @@ async function cleanupEventBridgeRule(match_id, player_id, interaction_token) {
     console.log(`Cleaned up EventBridge schedule: ${ruleName}`);
   } catch (error) {
     // Don't throw error if schedule doesn't exist
-    console.log(`Could not cleanup schedule ${ruleName}: ${error.message}`);
+    console.log(`Could not cleanup schedule ${ruleName}: ${error}`);
   }
 }

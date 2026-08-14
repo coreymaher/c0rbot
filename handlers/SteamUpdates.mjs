@@ -1,3 +1,5 @@
+// @ts-check
+
 "use strict";
 
 import Discord from "../lib/Discord.mjs";
@@ -139,10 +141,12 @@ const games = [
       "https://cdn.cloudflare.steamstatic.com/steam/apps/570/header.jpg",
     eventTypes: DEFAULT_EVENT_TYPES,
     // Valve serves these posts by gid on dota2.com too
-    newsUrl: (gid) => `https://www.dota2.com/newsentry/${gid}`,
+    newsUrl: (/** @type {string} */ gid) =>
+      `https://www.dota2.com/newsentry/${gid}`,
   },
 ];
 
+/** @param {(typeof games)[number]} game */
 async function processGame(game) {
   try {
     const db = await loadFeedData(game.key);
@@ -150,10 +154,10 @@ async function processGame(game) {
       "https://store.steampowered.com/events/ajaxgetpartnereventspageable/",
       {
         qs: {
-          clan_accountid: 0,
-          appid: game.appid,
-          offset: 0,
-          count: 10,
+          clan_accountid: "0",
+          appid: String(game.appid),
+          offset: "0",
+          count: "10",
           l: "english",
         },
         headers: {
@@ -174,8 +178,7 @@ async function processGame(game) {
       data = JSON.parse(raw_data);
     } catch (parseError) {
       console.error(
-        `Failed to parse JSON response for ${game.name}:`,
-        parseError.message,
+        `Failed to parse JSON response for ${game.name}: ${parseError}`,
       );
       console.error("Response preview:", raw_data.substring(0, 200));
       return;
@@ -191,7 +194,9 @@ async function processGame(game) {
     for (const eventType of game.eventTypes) {
       // Steam returns events newest-first, so the stored gid acts as a
       // watermark: everything above it in the list is still unposted.
-      const typeEvents = (data.events ?? []).filter(
+      /** @type {any[]} */
+      const events = data.events ?? [];
+      const typeEvents = events.filter(
         (event) => event.event_type === eventType.id,
       );
 
@@ -249,7 +254,7 @@ async function processGame(game) {
       await updateFeedData(game.key, updatedTracking);
     }
   } catch (error) {
-    console.error(`Error processing ${game.name}:`, error.message);
+    console.error(`Error processing ${game.name}: ${error}`);
   }
 }
 

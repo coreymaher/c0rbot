@@ -1,3 +1,5 @@
+// @ts-check
+
 "use strict";
 
 import Discord from "../lib/Discord.mjs";
@@ -15,6 +17,7 @@ const FEED_URL = "https://www.nomanssky.com/feed/";
 // the rest, and has been Hello Games' convention across every release since 2016.
 const VERSIONED = /\d+\.\d+/;
 
+/** @type {Record<string, string>} */
 const NAMED_ENTITIES = {
   amp: "&",
   lt: "<",
@@ -23,28 +26,39 @@ const NAMED_ENTITIES = {
   apos: "'",
 };
 
+/** @param {string} text */
 function decodeEntities(text) {
-  return text
-    .replace(/&#x([0-9a-f]+);/gi, (_, hex) =>
-      String.fromCodePoint(parseInt(hex, 16)),
-    )
-    .replace(/&#(\d+);/g, (_, dec) => String.fromCodePoint(Number(dec)))
-    .replace(/&(amp|lt|gt|quot|apos);/g, (_, name) => NAMED_ENTITIES[name]);
+  return (
+    text
+      .replace(/&#x([0-9a-f]+);/gi, (_, hex) =>
+        String.fromCodePoint(parseInt(hex, 16)),
+      )
+      .replace(/&#(\d+);/g, (_, dec) => String.fromCodePoint(Number(dec)))
+      // Left as-is if the alternation above ever outruns the table.
+      .replace(
+        /&(amp|lt|gt|quot|apos);/g,
+        (m, name) => NAMED_ENTITIES[name] ?? m,
+      )
+  );
 }
 
 const CDATA = /^<!\[CDATA\[([\s\S]*)\]\]>$/;
 
 // Scoped to one <item>: <channel> opens with its own <title> and <link>, which an
 // unscoped match would take instead.
+/**
+ * @param {string} item
+ * @param {string} name
+ */
 function tagText(item, name) {
   const match = item.match(
     new RegExp(`<${name}(?:\\s[^>]*)?>([\\s\\S]*?)</${name}>`),
   );
   if (!match) return "";
 
-  const raw = match[1].trim();
+  const raw = (match[1] ?? "").trim();
   const unwrapped = raw.match(CDATA);
-  return decodeEntities((unwrapped ? unwrapped[1] : raw).trim());
+  return decodeEntities((unwrapped?.[1] ?? raw).trim());
 }
 
 export async function handler() {
