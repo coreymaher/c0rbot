@@ -145,6 +145,9 @@ async function handleMatch(match, user) {
   }
 
   const result = match.match_result === match.player_team ? "won" : "lost";
+  // A hero added since this table was last updated is absent. Announce the match
+  // without a name or portrait rather than throw: handler() does not catch, so a
+  // throw here strands the watermark on this match and every later poll repeats it.
   const hero = constants.heroes[match.hero_id];
 
   const played = withArticle(
@@ -153,7 +156,7 @@ async function handleMatch(match, user) {
     constants.gameModes[metadata?.match_info?.game_mode],
     "match",
   );
-  const description = `${user.name} ${result} ${played} as ${hero.name}`;
+  const description = `${user.name} ${result} ${played} as ${hero?.name || "an unknown hero"}`;
   const fields = [];
 
   fields.push({
@@ -193,7 +196,7 @@ async function handleMatch(match, user) {
   }
 
   let thumbnail = undefined;
-  if (hero.image) {
+  if (hero?.image) {
     thumbnail = {
       url: hero.image,
     };

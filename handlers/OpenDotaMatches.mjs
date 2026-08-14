@@ -275,7 +275,14 @@ function createDiscordMessageForMatch(steamID, user, matchID, match, config) {
   }
   duration += `${durationMinutes}m ${durationSeconds}s`;
 
-  const thumbnail_url = `http://cdn.dota2.com/apps/dota2/images/dota_react/heroes/${hero.image}.png`;
+  // dotaconstants trails Valve by a release or two, so a hero added this patch is
+  // absent here. Announce the match without a name or portrait rather than throw:
+  // every embed in the run is built before the first send, so one throw would drop
+  // all of them, and it would throw again on every retry because updateDB never
+  // advances past the match.
+  const thumbnail_url = hero
+    ? `http://cdn.dota2.com/apps/dota2/images/dota_react/heroes/${hero.image}.png`
+    : undefined;
 
   const played = withArticle(
     skill && `${skill} skill`,
@@ -283,7 +290,7 @@ function createDiscordMessageForMatch(steamID, user, matchID, match, config) {
     gameMode,
     "match",
   );
-  const description = `${user.personaname} ${result} ${played} as ${hero.name}`;
+  const description = `${user.personaname} ${result} ${played} as ${hero?.name || "an unknown hero"}`;
   // Open-ended: the optional rank fields are pushed onto `fields` below.
   /** @type {Record<string, any>} */
   const embed = {
@@ -310,9 +317,7 @@ function createDiscordMessageForMatch(steamID, user, matchID, match, config) {
       },
       { name: "duration", value: duration, inline: true },
     ],
-    thumbnail: {
-      url: thumbnail_url,
-    },
+    ...(thumbnail_url && { thumbnail: { url: thumbnail_url } }),
   };
 
   if (MMRs.length > 1) {
@@ -327,23 +332,31 @@ function createDiscordMessageForMatch(steamID, user, matchID, match, config) {
     });
   }
 
-  if (rankTiers.length > 1) {
-    const totalTierIndex = rankTiers
-      .map((rank) => {
-        return DotaConstants.rankTierValues.indexOf(rank);
-      })
-      .reduce((total, rank) => {
-        return (total += rank);
-      }, 0);
-    const estimatedTierIndex = Math.round(totalTierIndex / rankTiers.length);
+  // Averaging index positions rather than the values, because the tiers are not a
+  // number line. Unrecognised tiers are dropped rather than averaged in as -1,
+  // which would silently drag the result toward Herald -- averageBadge does the
+  // same for Deadlock.
+  const tierIndexes = rankTiers
+    .map((rank) => DotaConstants.rankTierValues.indexOf(rank))
+    .filter((index) => index >= 0);
+
+  if (tierIndexes.length > 1) {
+    const totalTierIndex = tierIndexes.reduce(
+      (total, index) => total + index,
+      0,
+    );
+    const estimatedTierIndex = Math.round(totalTierIndex / tierIndexes.length);
     const estimatedTier = DotaConstants.rankTierValues[estimatedTierIndex];
-    const tier = Math.floor(estimatedTier / 10);
-    const subTier = estimatedTier % 10;
-    embed.fields.push({
-      name: "tier",
-      value: `${DotaConstants.rankTiers[tier]} ${subTier}`,
-      inline: true,
-    });
+    const tierName =
+      estimatedTier && DotaConstants.rankTiers[Math.floor(estimatedTier / 10)];
+
+    if (tierName) {
+      embed.fields.push({
+        name: "tier",
+        value: `${tierName} ${estimatedTier % 10}`,
+        inline: true,
+      });
+    }
   }
 
   embed.fields.push({

@@ -8,6 +8,7 @@
     "moduleResolution": "NodeNext",
     "lib": ["es2023"],
     "strict": true,
+    "noUncheckedIndexedAccess": true,
     "noImplicitReturns": true,
     "skipLibCheck": true,
     "types": ["node"],
