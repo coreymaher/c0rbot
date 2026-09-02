@@ -1,4 +1,4 @@
-// Per million tokens, as of August 2026. Source: provider pricing pages.
+// Per million tokens, as of September 2026. Source: provider pricing pages.
 const PRICING = {
   "gpt-5": { input: 2.5, output: 10.0 },
   "gpt-5-mini": { input: 0.4, output: 1.6 },
@@ -14,6 +14,7 @@ const PRICING = {
   "gemini-3.5-flash-lite": { input: 0.3, output: 2.5 },
   "gemini-3.6-flash": { input: 1.5, output: 7.5 },
   "gemini-3.7-flash": { input: 0.75, output: 3.75 },
+  "gemini-3.8-flash": { input: 0.75, output: 3.75 },
 };
 
 export function isPriced(model) {
