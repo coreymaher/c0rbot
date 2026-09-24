@@ -344,11 +344,7 @@ async function analyzeMatch(match, playerId, playerName, fullMatch) {
 
   return {
     analysis: response.output,
-    footer: analysisFooter({
-      model: response.model,
-      usage: response.usage,
-      ms: response.response_time_ms,
-    }),
+    footer: analysisFooter(response),
   };
 }
 

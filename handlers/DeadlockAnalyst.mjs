@@ -307,10 +307,6 @@ async function analyzeMatch(compactMatch, playerName) {
 
   return {
     analysis: response.output,
-    footer: analysisFooter({
-      model: response.model,
-      usage: response.usage,
-      ms: response.response_time_ms,
-    }),
+    footer: analysisFooter(response),
   };
 }
