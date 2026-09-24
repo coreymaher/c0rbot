@@ -281,7 +281,6 @@ async function analyzeMatch(compactMatch, playerName) {
 
   console.log("Compact Match Data:", JSON.stringify(compactMatch, null, 2));
 
-  const start = Date.now();
   const response = await llm.callWithFallback(
     prompt,
     ANALYSIS_MODELS,
@@ -311,7 +310,7 @@ async function analyzeMatch(compactMatch, playerName) {
     footer: analysisFooter({
       model: response.model,
       usage: response.usage,
-      ms: Date.now() - start,
+      ms: response.response_time_ms,
     }),
   };
 }

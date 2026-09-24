@@ -318,7 +318,6 @@ async function analyzeMatch(match, playerId, playerName, fullMatch) {
 
   console.log("Analyzing Match", { prompt });
 
-  const start = Date.now();
   const response = await llm.callWithFallback(
     prompt,
     ANALYSIS_MODELS,
@@ -348,7 +347,7 @@ async function analyzeMatch(match, playerId, playerName, fullMatch) {
     footer: analysisFooter({
       model: response.model,
       usage: response.usage,
-      ms: Date.now() - start,
+      ms: response.response_time_ms,
     }),
   };
 }
