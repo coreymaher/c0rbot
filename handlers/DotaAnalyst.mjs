@@ -10,6 +10,7 @@ import {
   ANALYSIS_SCHEMA,
   ANALYSIS_MODELS,
   analysisFields,
+  analysisFooter,
 } from "../lib/analysis.mjs";
 import secrets from "../lib/secrets.mjs";
 import DotaConstants from "../lib/DotaConstants.mjs";
@@ -223,7 +224,7 @@ export async function handler(event, context) {
     );
 
     const analysisTimer = createTimer("AI analysis");
-    const analysis = await analyzeMatch(
+    const { analysis, footer } = await analyzeMatch(
       match,
       Number(player_id),
       playerName,
@@ -241,6 +242,7 @@ export async function handler(event, context) {
           title: `Match Analysis - ${playerName} - ${playerHero}`,
           description: analysis.summary,
           fields: analysisFields(analysis),
+          footer,
         },
       ],
       allowed_mentions: { parse: [] },
@@ -316,6 +318,7 @@ async function analyzeMatch(match, playerId, playerName, fullMatch) {
 
   console.log("Analyzing Match", { prompt });
 
+  const start = Date.now();
   const response = await llm.callWithFallback(
     prompt,
     ANALYSIS_MODELS,
@@ -340,7 +343,14 @@ async function analyzeMatch(match, playerId, playerName, fullMatch) {
     });
   }
 
-  return response.output;
+  return {
+    analysis: response.output,
+    footer: analysisFooter({
+      model: response.model,
+      usage: response.usage,
+      ms: Date.now() - start,
+    }),
+  };
 }
 
 /**
