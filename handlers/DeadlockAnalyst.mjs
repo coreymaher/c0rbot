@@ -11,6 +11,7 @@ import {
   ANALYSIS_SCHEMA,
   ANALYSIS_MODELS,
   analysisFields,
+  analysisFooter,
 } from "../lib/analysis.mjs";
 import secrets from "../lib/secrets.mjs";
 import * as DeadlockConstants from "../lib/DeadlockConstants.mjs";
@@ -202,7 +203,7 @@ export async function handler(event, context) {
     compactTimer.end();
 
     const analysisTimer = createTimer("AI analysis");
-    const analysis = await analyzeMatch(compactMatch, playerName);
+    const { analysis, footer } = await analyzeMatch(compactMatch, playerName);
     analysisTimer.end();
 
     // Open-ended: components is set below, for admins only.
@@ -217,6 +218,7 @@ export async function handler(event, context) {
             : `Match Analysis - ${playerHero}`,
           description: analysis.summary,
           fields: analysisFields(analysis),
+          footer,
         },
       ],
       allowed_mentions: { parse: [] },
@@ -303,5 +305,8 @@ async function analyzeMatch(compactMatch, playerName) {
     });
   }
 
-  return response.output;
+  return {
+    analysis: response.output,
+    footer: analysisFooter(response),
+  };
 }
