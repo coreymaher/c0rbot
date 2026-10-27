@@ -23,6 +23,8 @@ interface FunctionOptions {
   entry: string;
   /** Seconds. Defaults to 30. */
   timeout?: number;
+  /** Async invocations only. Defaults to Lambda's, which is 2. */
+  retryAttempts?: number;
   env?: Record<string, string>;
 }
 
@@ -94,6 +96,7 @@ export class C0rbotStack extends cdk.Stack {
           removalPolicy: cdk.RemovalPolicy.RETAIN,
         }),
         timeout: cdk.Duration.seconds(opts.timeout ?? 30),
+        retryAttempts: opts.retryAttempts,
         environment: {
           SECRETS_PARAMETER,
           CACHE_TABLE: cache.tableName,
@@ -152,9 +155,13 @@ export class C0rbotStack extends cdk.Stack {
     matches.grantReadWriteData(deadlockMatches);
     cache.grantReadWriteData(deadlockMatches);
 
+    // The analysts take no Lambda retries. A failed run has already posted its
+    // error, and one that exhausted the model chain would only exhaust it again
+    // on the same quota. The requester can click Analyze to try again.
     const dotaAnalyst = makeFunction("dotaAnalyst", {
       entry: "handlers/DotaAnalyst.mjs",
       timeout: 180,
+      retryAttempts: 0,
       env: { SCHEDULER_ROLE_ARN: schedulerRoleArn },
     });
     cache.grantReadWriteData(dotaAnalyst);
@@ -180,6 +187,7 @@ export class C0rbotStack extends cdk.Stack {
     const deadlockAnalyst = makeFunction("deadlockAnalyst", {
       entry: "handlers/DeadlockAnalyst.mjs",
       timeout: 240,
+      retryAttempts: 0,
     });
     matches.grantReadWriteData(deadlockAnalyst);
     cache.grantReadWriteData(deadlockAnalyst);
