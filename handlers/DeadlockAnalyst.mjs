@@ -10,6 +10,7 @@ import LLMClient from "../lib/LLMClient.mjs";
 import {
   ANALYSIS_SCHEMA,
   ANALYSIS_MODELS,
+  analysisDeadline,
   analysisFields,
   analysisFooter,
 } from "../lib/analysis.mjs";
@@ -203,7 +204,11 @@ export async function handler(event, context) {
     compactTimer.end();
 
     const analysisTimer = createTimer("AI analysis");
-    const { analysis, footer } = await analyzeMatch(compactMatch, playerName);
+    const { analysis, footer } = await analyzeMatch(
+      compactMatch,
+      playerName,
+      analysisDeadline(context),
+    );
     analysisTimer.end();
 
     // Open-ended: components is set below, for admins only.
@@ -275,8 +280,9 @@ export async function handler(event, context) {
  * @param {any} compactMatch the compacted match this module builds
  * @param {string|null} playerName null when the player has no stored name,
  *   which the prompt and the embed title both phrase around
+ * @param {number} deadline epoch ms, from analysisDeadline
  */
-async function analyzeMatch(compactMatch, playerName) {
+async function analyzeMatch(compactMatch, playerName, deadline) {
   const prompt = generateAnalysisPrompt(compactMatch, playerName);
 
   console.log("Compact Match Data:", JSON.stringify(compactMatch, null, 2));
@@ -285,6 +291,7 @@ async function analyzeMatch(compactMatch, playerName) {
     prompt,
     ANALYSIS_MODELS,
     ANALYSIS_SCHEMA,
+    deadline,
   );
 
   if (response.usage) {
