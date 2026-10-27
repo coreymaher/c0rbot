@@ -9,6 +9,7 @@ import LLMClient from "../lib/LLMClient.mjs";
 import {
   ANALYSIS_SCHEMA,
   ANALYSIS_MODELS,
+  analysisDeadline,
   analysisFields,
   analysisFooter,
 } from "../lib/analysis.mjs";
@@ -229,6 +230,7 @@ export async function handler(event, context) {
       Number(player_id),
       playerName,
       fullMatch,
+      analysisDeadline(context),
     );
     analysisTimer.end();
 
@@ -300,8 +302,9 @@ export async function handler(event, context) {
  * @param {number} playerId
  * @param {string} playerName
  * @param {any} fullMatch the OpenDota match, unmodelled
+ * @param {number} deadline epoch ms, from analysisDeadline
  */
-async function analyzeMatch(match, playerId, playerName, fullMatch) {
+async function analyzeMatch(match, playerId, playerName, fullMatch, deadline) {
   const promptTimer = createTimer("prompt generation");
   const prompt = await generateAnalysisPrompt(
     match,
@@ -322,6 +325,7 @@ async function analyzeMatch(match, playerId, playerName, fullMatch) {
     prompt,
     ANALYSIS_MODELS,
     ANALYSIS_SCHEMA,
+    deadline,
   );
 
   if (response.usage) {
