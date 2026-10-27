@@ -184,13 +184,13 @@ export async function handler(event, context) {
     const itemsData = await loadItems({ cache });
     itemsTimer.end();
 
-    const popularItemsTimer = createTimer("popular items loading");
+    const popularItemsTimer = createTimer("popular items and benchmarks");
     const avgBadge = await deadlockAPI.getMatchAverageBadge(matchData);
-    // Zero is the API's "every rank", the right pool for a match with no rank.
-    const popularItemsData = await deadlockAPI.getPopularItems(
-      player.hero_id,
-      avgBadge ?? 0,
-    );
+    const [popularItemsData, heroBenchmarks] = await Promise.all([
+      // Zero is the API's "every rank", the right pool for a match with no rank.
+      deadlockAPI.getPopularItems(player.hero_id, avgBadge ?? 0),
+      deadlockAPI.getHeroBenchmarks(player.hero_id, avgBadge),
+    ]);
     popularItemsTimer.end();
 
     const compactTimer = createTimer("match data processing");
@@ -200,6 +200,7 @@ export async function handler(event, context) {
       itemsData,
       popularItemsData,
       avgBadge,
+      heroBenchmarks,
     );
     compactTimer.end();
 
