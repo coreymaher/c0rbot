@@ -11,7 +11,7 @@ import {
   ANALYSIS_SCHEMA,
   ANALYSIS_MODELS,
   analysisDeadline,
-  analysisFields,
+  analysisEmbed,
   analysisFooter,
 } from "../lib/analysis.mjs";
 import secrets from "../lib/secrets.mjs";
@@ -218,14 +218,13 @@ export async function handler(event, context) {
       flags: 64,
       content: "",
       embeds: [
-        {
-          title: playerName
+        analysisEmbed(
+          playerName
             ? `Match Analysis - ${playerName} - ${playerHero}`
             : `Match Analysis - ${playerHero}`,
-          description: analysis.summary,
-          fields: analysisFields(analysis),
+          analysis,
           footer,
-        },
+        ),
       ],
       allowed_mentions: { parse: [] },
     };

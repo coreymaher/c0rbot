@@ -61,6 +61,14 @@ function formatOutput(output) {
   lines.push(`Summary: ${output.summary || "N/A"}`);
   lines.push("");
 
+  for (const [label, text] of [
+    ["Early Game", output.earlyGame],
+    ["Mid Game", output.midGame],
+    ["Late Game", output.lateGame],
+  ]) {
+    if (text) lines.push(`${label}: ${text}`, "");
+  }
+
   if (output.strengths && output.strengths.length > 0) {
     lines.push("Strengths:");
     output.strengths.forEach((s) => lines.push(`  - ${s}`));
